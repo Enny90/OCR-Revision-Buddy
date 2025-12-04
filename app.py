@@ -309,15 +309,16 @@ def call_ai_tutor(user_message, context="", documents=None):
     openai_key = st.secrets.get("OPENAI_API_KEY", "")
     anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
     
-    # Build document context - IMPROVED
+    # Build document context - IMPROVED with token limits
     doc_context = ""
     doc_list = []
     
     if documents and len(documents) > 0:
         for doc_id, doc in documents.items():
             doc_list.append(f"- {doc['name']} ({doc['type']})")
-            # Take first 30,000 chars per document to stay within limits
-            content_preview = doc['content'][:30000]
+            # Reduced to 15,000 chars per document (roughly 3,750 tokens)
+            # This keeps us well under the 30k TPM limit
+            content_preview = doc['content'][:15000]
             doc_context += f"\n\n{'='*60}\nDOCUMENT: {doc['name']} ({doc['type']})\n{'='*60}\n{content_preview}\n"
         
         # Add to system prompt
@@ -357,16 +358,19 @@ The document content is provided below. Use it to ensure accuracy and authentici
             
             client = openai.OpenAI(api_key=openai_key)
             
-            # For OpenAI, we need to be careful with token limits
-            # GPT-4o has 128k context, so we're safe with our 30k per doc limit
+            # Check if we should use mini model (higher rate limits, cheaper)
+            # GPT-4o: 30k TPM, $2.50/$10 per 1M tokens
+            # GPT-4o-mini: 200k TPM, $0.15/$0.60 per 1M tokens
+            use_mini = st.secrets.get("USE_GPT4O_MINI", "false").lower() == "true"
+            model = "gpt-4o-mini" if use_mini else "gpt-4o"
             
             response = client.chat.completions.create(
-                model="gpt-4o",  # Using GPT-4o (most capable model)
+                model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": full_message}
                 ],
-                max_tokens=2000,
+                max_tokens=1500,  # Reduced from 2000 to stay under limits
                 temperature=0.7
             )
             
@@ -375,7 +379,28 @@ The document content is provided below. Use it to ensure accuracy and authentici
         except ImportError:
             pass  # Try Anthropic instead
         except Exception as e:
-            return f"⚠️ OpenAI API error: {str(e)}\n\nTip: Check your API key and ensure you have sufficient credits."
+            error_msg = str(e)
+            if "rate_limit" in error_msg or "429" in error_msg:
+                return """⚠️ **Rate Limit Exceeded**
+
+You've hit OpenAI's rate limit. This happens when:
+- Sending too much document content at once
+- Making too many requests too quickly
+- Your API tier has low limits
+
+**Quick Fixes:**
+1. **Wait 1 minute** and try again
+2. **Use GPT-4o-mini** (higher limits, cheaper):
+   - Go to Streamlit Settings → Secrets
+   - Add: `USE_GPT4O_MINI = "true"`
+3. **Upload fewer/smaller documents** 
+4. **Upgrade your OpenAI account** at platform.openai.com
+
+**Current limits on free tier:**
+- GPT-4o: 30,000 tokens/min
+- GPT-4o-mini: 200,000 tokens/min (recommended!)"""
+            else:
+                return f"⚠️ OpenAI API error: {error_msg}\n\nTip: Check your API key and ensure you have sufficient credits."
     
     # Try Anthropic if OpenAI not available
     if anthropic_key:
@@ -440,6 +465,9 @@ def show_setup_page():
     - 📋 Revision Guides
     
     The AI will use these documents to provide accurate, OCR-aligned revision help and marking.
+    
+    **Note:** Large documents are automatically trimmed to avoid rate limits. 
+    The AI will still have access to the most important content from each document.
     """)
     
     # Document upload sections
