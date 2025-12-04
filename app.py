@@ -248,20 +248,34 @@ For each interaction:
 6. Use uploaded OCR materials to ensure authenticity"""
 
 def extract_text_from_pdf(pdf_file):
-    """Extract text from PDF file"""
+    """Extract text from PDF file with better error handling"""
     try:
         import PyPDF2
         
+        # Reset file pointer to beginning
+        pdf_file.seek(0)
+        
         pdf_reader = PyPDF2.PdfReader(pdf_file)
         text = ""
+        total_pages = len(pdf_reader.pages)
         
-        for page_num in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[page_num]
-            text += page.extract_text() + "\n\n"
+        for page_num in range(total_pages):
+            try:
+                page = pdf_reader.pages[page_num]
+                page_text = page.extract_text()
+                text += page_text + "\n\n"
+            except Exception as page_error:
+                text += f"[Error reading page {page_num + 1}]\n"
+        
+        if len(text.strip()) < 100:
+            return f"⚠️ Warning: Very little text extracted ({len(text)} characters). PDF might be image-based or encrypted."
         
         return text
+        
+    except ImportError:
+        return "❌ Error: PyPDF2 not installed. Add 'PyPDF2' to requirements.txt and redeploy."
     except Exception as e:
-        return f"Error extracting PDF: {str(e)}\n\nNote: Install PyPDF2 with: pip install PyPDF2"
+        return f"❌ Error extracting PDF: {str(e)}\n\nTip: Make sure the PDF is not password-protected or image-based."
 
 def process_uploaded_file(uploaded_file, doc_type):
     """Process uploaded PDF and extract text"""
@@ -295,23 +309,46 @@ def call_ai_tutor(user_message, context="", documents=None):
     openai_key = st.secrets.get("OPENAI_API_KEY", "")
     anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
     
-    # Build document context
+    # Build document context - IMPROVED
     doc_context = ""
-    if documents:
-        doc_list = []
+    doc_list = []
+    
+    if documents and len(documents) > 0:
         for doc_id, doc in documents.items():
             doc_list.append(f"- {doc['name']} ({doc['type']})")
-            doc_context += f"\n\n=== {doc['name']} ({doc['type']}) ===\n{doc['content'][:50000]}\n"  # Limit size
+            # Take first 30,000 chars per document to stay within limits
+            content_preview = doc['content'][:30000]
+            doc_context += f"\n\n{'='*60}\nDOCUMENT: {doc['name']} ({doc['type']})\n{'='*60}\n{content_preview}\n"
         
+        # Add to system prompt
         system_prompt = SYSTEM_PROMPT.format(
-            document_list="\n".join(doc_list) if doc_list else "None uploaded yet"
+            document_list="\n".join(doc_list)
         )
+        
+        # Add explicit instruction to use documents
+        doc_instruction = f"""
+
+IMPORTANT: You have access to the following uploaded OCR materials:
+{chr(10).join(doc_list)}
+
+You MUST reference and use content from these documents when:
+- Generating questions (use past paper style and mark schemes)
+- Marking answers (use mark scheme criteria from uploaded documents)
+- Explaining topics (use textbook content and specification details)
+
+The document content is provided below. Use it to ensure accuracy and authenticity."""
+        
+        system_prompt += doc_instruction
+        
     else:
         system_prompt = SYSTEM_PROMPT.format(document_list="None uploaded yet")
+        doc_context = ""
     
-    # Prepare full context
-    full_context = doc_context + "\n\n" + context if doc_context else context
-    full_message = f"{full_context}\n\nStudent question: {user_message}"
+    # Prepare full context - documents FIRST, then question
+    if doc_context:
+        full_message = f"{doc_context}\n\n{'='*60}\nCONTEXT: {context}\n{'='*60}\n\nSTUDENT QUESTION/REQUEST:\n{user_message}"
+    else:
+        full_message = f"CONTEXT: {context}\n\nSTUDENT QUESTION: {user_message}"
     
     # Try OpenAI first
     if openai_key:
@@ -320,13 +357,16 @@ def call_ai_tutor(user_message, context="", documents=None):
             
             client = openai.OpenAI(api_key=openai_key)
             
+            # For OpenAI, we need to be careful with token limits
+            # GPT-4o has 128k context, so we're safe with our 30k per doc limit
+            
             response = client.chat.completions.create(
                 model="gpt-4o",  # Using GPT-4o (most capable model)
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": full_message}
                 ],
-                max_tokens=3000,
+                max_tokens=2000,
                 temperature=0.7
             )
             
@@ -335,7 +375,7 @@ def call_ai_tutor(user_message, context="", documents=None):
         except ImportError:
             pass  # Try Anthropic instead
         except Exception as e:
-            return f"⚠️ OpenAI API error: {str(e)}"
+            return f"⚠️ OpenAI API error: {str(e)}\n\nTip: Check your API key and ensure you have sufficient credits."
     
     # Try Anthropic if OpenAI not available
     if anthropic_key:
@@ -477,13 +517,36 @@ def show_setup_page():
             with col2:
                 st.write(doc['type'])
             with col3:
-                st.write(f"Uploaded: {doc['uploaded_at']}")
+                chars = len(doc['content'])
+                if chars < 100:
+                    st.error(f"⚠️ Only {chars} chars")
+                else:
+                    st.success(f"✅ {chars:,} chars")
             with col4:
                 if st.button("🗑️", key=f"delete_{doc_id}"):
                     del st.session_state.uploaded_documents[doc_id]
                     st.rerun()
+            
+            # Show preview
+            with st.expander(f"Preview content from {doc['name'][:30]}..."):
+                preview = doc['content'][:500]
+                st.text(preview)
+                if len(doc['content']) > 500:
+                    st.write(f"... (and {len(doc['content']) - 500:,} more characters)")
         
         st.success(f"✅ **{len(st.session_state.uploaded_documents)} documents** loaded in knowledge base")
+        
+        # Test button
+        st.markdown("---")
+        if st.button("🧪 Test AI Document Access", use_container_width=True):
+            with st.spinner("Testing if AI can access documents..."):
+                test_result = call_ai_tutor(
+                    "List the documents you have access to and quote one sentence from each to prove you can read them.",
+                    "This is a test to verify document access.",
+                    st.session_state.uploaded_documents
+                )
+                st.markdown("**Test Result:**")
+                st.info(test_result)
         
         if st.button("✅ Knowledge Base Ready - Start Using App", type="primary"):
             st.session_state.knowledge_base_ready = True
@@ -596,7 +659,14 @@ def show_revision_chat():
         st.info(f"📌 Current topic: **{st.session_state.selected_topic}**")
     
     if st.session_state.uploaded_documents:
-        st.success(f"✅ AI has access to {len(st.session_state.uploaded_documents)} documents")
+        with st.expander(f"✅ AI has access to {len(st.session_state.uploaded_documents)} documents - Click to view"):
+            for doc_id, doc in st.session_state.uploaded_documents.items():
+                st.write(f"**{doc['name']}** ({doc['type']})")
+                st.write(f"- Characters extracted: {len(doc['content']):,}")
+                st.write(f"- Preview: {doc['content'][:200]}...")
+                st.write("---")
+    else:
+        st.warning("⚠️ No documents uploaded. AI will use general knowledge only. Go to 'Manage Documents' to upload OCR materials.")
     
     # Display chat history
     chat_container = st.container()
@@ -685,7 +755,11 @@ def show_practice_questions():
     st.markdown("Get OCR-style exam questions with AI marking")
     
     if st.session_state.uploaded_documents:
-        st.success(f"✅ Questions will be based on {len(st.session_state.uploaded_documents)} uploaded documents")
+        with st.expander(f"✅ {len(st.session_state.uploaded_documents)} documents available to AI - Click to view"):
+            for doc_id, doc in st.session_state.uploaded_documents.items():
+                st.write(f"**{doc['name']}** ({doc['type']}) - {len(doc['content']):,} characters")
+    else:
+        st.warning("⚠️ No documents uploaded. Upload OCR materials in 'Manage Documents' for best results.")
     
     col1, col2, col3 = st.columns(3)
     
