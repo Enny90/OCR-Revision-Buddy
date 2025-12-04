@@ -301,129 +301,121 @@ def process_uploaded_file(uploaded_file, doc_type):
 
 def call_ai_tutor(user_message, context="", documents=None):
     """
-    Call OpenAI or Anthropic API with uploaded documents as context
-    Supports both OpenAI and Anthropic - checks which API key is available
+    Safer, token-efficient AI call function.
+    Prevents excessive token usage by limiting the number and size of documents.
     """
-    
-    # Check which API key is available
+
+    # Check API keys
     openai_key = st.secrets.get("OPENAI_API_KEY", "")
     anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
-    
-    # Build document context - IMPROVED
+
+    # ========== TOKEN-SAFE DOCUMENT HANDLING ==========
+    MAX_DOCS_IN_PROMPT = 3       # only send 3 docs per request
+    MAX_CHARS_PER_DOC = 4000     # ~1k tokens per doc (SAFE)
+
     doc_context = ""
     doc_list = []
-    
+
+    # Build safe document context
     if documents and len(documents) > 0:
-        for doc_id, doc in documents.items():
+
+        # Select only the first few documents to avoid hitting token limits
+        doc_items = list(documents.items())[:MAX_DOCS_IN_PROMPT]
+
+        for doc_id, doc in doc_items:
             doc_list.append(f"- {doc['name']} ({doc['type']})")
-            # Take first 30,000 chars per document to stay within limits
-            content_preview = doc['content'][:30000]
-            doc_context += f"\n\n{'='*60}\nDOCUMENT: {doc['name']} ({doc['type']})\n{'='*60}\n{content_preview}\n"
-        
-        # Add to system prompt
+
+            # Trim text to safe limit
+            content_preview = doc['content'][:MAX_CHARS_PER_DOC]
+
+            doc_context += (
+                f"\n\n{'='*60}\n"
+                f"DOCUMENT: {doc['name']} ({doc['type']})\n"
+                f"{'='*60}\n"
+                f"{content_preview}\n"
+            )
+
+        # Build system prompt, including document list
         system_prompt = SYSTEM_PROMPT.format(
             document_list="\n".join(doc_list)
         )
-        
-        # Add explicit instruction to use documents
-        doc_instruction = f"""
+
+        # Add instruction block (small, safe)
+        system_prompt += f"""
 
 IMPORTANT: You have access to the following uploaded OCR materials:
 {chr(10).join(doc_list)}
 
-You MUST reference and use content from these documents when:
-- Generating questions (use past paper style and mark schemes)
-- Marking answers (use mark scheme criteria from uploaded documents)
-- Explaining topics (use textbook content and specification details)
-
-The document content is provided below. Use it to ensure accuracy and authenticity."""
-        
-        system_prompt += doc_instruction
-        
+Use these documents to:
+- Generate exam-style questions
+- Mark work using OCR criteria
+- Ensure explanations align with OCR J204
+"""
     else:
+        # No documents
         system_prompt = SYSTEM_PROMPT.format(document_list="None uploaded yet")
         doc_context = ""
-    
-    # Prepare full context - documents FIRST, then question
+
+    # ========== BUILD FULL MESSAGE ==========
     if doc_context:
-        full_message = f"{doc_context}\n\n{'='*60}\nCONTEXT: {context}\n{'='*60}\n\nSTUDENT QUESTION/REQUEST:\n{user_message}"
+        full_message = (
+            f"{doc_context}\n\n"
+            f"{'='*60}\n"
+            f"CONTEXT: {context}\n"
+            f"{'='*60}\n\n"
+            f"STUDENT QUESTION:\n{user_message}"
+        )
     else:
-        full_message = f"CONTEXT: {context}\n\nSTUDENT QUESTION: {user_message}"
-    
-    # Try OpenAI first
+        full_message = f"CONTEXT: {context}\n\nSTUDENT QUESTION:\n{user_message}"
+
+    # ======================================================
+    #                    OPENAI CALL
+    # ======================================================
     if openai_key:
         try:
             import openai
-            
             client = openai.OpenAI(api_key=openai_key)
-            
-            # For OpenAI, we need to be careful with token limits
-            # GPT-4o has 128k context, so we're safe with our 30k per doc limit
-            
+
             response = client.chat.completions.create(
-                model="gpt-4o",  # Using GPT-4o (most capable model)
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": full_message}
+                    {"role": "user", "content": full_message},
                 ],
                 max_tokens=2000,
                 temperature=0.7
             )
-            
+
             return response.choices[0].message.content
-        
-        except ImportError:
-            pass  # Try Anthropic instead
+
         except Exception as e:
-            return f"⚠️ OpenAI API error: {str(e)}\n\nTip: Check your API key and ensure you have sufficient credits."
-    
-    # Try Anthropic if OpenAI not available
+            return f"⚠️ OpenAI API error: {str(e)}"
+
+    # ======================================================
+    #                   ANTHROPIC FALLBACK
+    # ======================================================
     if anthropic_key:
         try:
             import anthropic
-            
             client = anthropic.Anthropic(api_key=anthropic_key)
-            
-            messages = [
-                {"role": "user", "content": full_message}
-            ]
-            
+
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-3-sonnet-20240229",
                 max_tokens=3000,
                 system=system_prompt,
-                messages=messages
+                messages=[{"role": "user", "content": full_message}]
             )
-            
+
             return response.content[0].text
-        
-        except ImportError:
-            pass
+
         except Exception as e:
             return f"⚠️ Anthropic API error: {str(e)}"
-    
-    # No API keys available
-    return """⚠️ No AI API key found.
 
-To enable AI features, add ONE of these to Streamlit secrets:
-
-**Option 1: OpenAI (GPT-4)**
-```toml
-OPENAI_API_KEY = "sk-..."
-```
-
-**Option 2: Anthropic (Claude)**
-```toml
-ANTHROPIC_API_KEY = "sk-ant-..."
-```
-
-**Steps:**
-1. Get API key from platform.openai.com OR console.anthropic.com
-2. Add to Streamlit secrets
-3. Install library: `pip install openai` OR `pip install anthropic`
-4. Restart the app
-
-For now, the app will show example responses."""
+    # No API key present
+    return (
+        "⚠️ No API key found. Add OPENAI_API_KEY or ANTHROPIC_API_KEY "
+        "to enable AI features."
+    )
 
 # Admin/Setup page for document uploads
 def show_setup_page():
