@@ -323,12 +323,14 @@ def process_uploaded_file(uploaded_file, doc_type):
         else:
             text_content = uploaded_file.read().decode('utf-8')
         
-        return {
+        doc_data = {
             'name': uploaded_file.name,
             'type': doc_type,
             'content': text_content,
             'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
         }
+        
+        return doc_data
     except Exception as e:
         return {
             'name': uploaded_file.name,
@@ -494,6 +496,22 @@ For now, the app will show example responses."""
 
 # Admin/Setup page for document uploads
 def show_setup_page():
+    # Add sidebar for navigation even in setup mode
+    with st.sidebar:
+        st.title("👨‍🏫 Teacher Setup")
+        st.markdown("---")
+        
+        if st.button("🔙 Back to Login", use_container_width=True):
+            st.session_state.student_name = None
+            st.rerun()
+        
+        if st.session_state.uploaded_documents:
+            st.markdown("---")
+            st.info(f"📚 {len(st.session_state.uploaded_documents)} documents uploaded")
+        
+        st.markdown("---")
+        st.caption("💡 Upload documents below, then save them permanently using 'Generate Save Code'")
+    
     st.title("📚 Knowledge Base Setup")
     st.markdown("### Upload OCR GCSE Business Documents")
     
@@ -675,22 +693,26 @@ This is NOT asking you to violate any policies. This is confirming the technical
         st.markdown("""
         Your AI revision buddy is ready! The knowledge base is loaded with your documents.
         
-        **Next step:** Click the button below to return to the login page where students can access the app.
+        **Important:** To make documents permanent and available to students:
+        1. Click "📋 Generate Save Code" above
+        2. Copy the code and add to Streamlit Secrets
+        3. Then click "Exit Setup" below
         """)
         
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            if st.button("✅ Exit Setup - Go To Login", type="primary", use_container_width=True, key="ready_button"):
-                # Clear admin mode and go back
-                st.session_state.pop('student_name', None)
+            if st.button("✅ Exit Setup", type="primary", use_container_width=True, key="exit_setup_main"):
+                st.session_state.student_name = None
                 st.session_state.knowledge_base_ready = True
+                st.success("Exiting to login page...")
                 st.rerun()
         
         with col2:
-            if st.button("🔄 Reload App", use_container_width=True, key="reload_button"):
+            if st.button("🔄 Restart App", use_container_width=True, key="restart_app"):
                 st.session_state.clear()
                 st.session_state.knowledge_base_ready = True
+                st.success("Restarting app...")
                 st.rerun()
         
         st.markdown("---")
