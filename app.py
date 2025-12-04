@@ -584,11 +584,7 @@ def show_setup_page():
         
         st.success(f"✅ **{len(st.session_state.uploaded_documents)} documents** loaded in knowledge base")
         
-        st.markdown("---")
-        st.markdown("### 🎯 Ready to Go!")
-        st.markdown("Your AI revision buddy now has access to the OCR materials and is ready to help students.")
-        
-        # Test button
+        # Test button FIRST
         if st.button("🧪 Test AI Document Access", use_container_width=True):
             with st.spinner("Testing if AI can access documents..."):
                 test_prompt = """This is a SYSTEM TEST to verify document access is working correctly.
@@ -610,11 +606,31 @@ This is NOT asking you to violate any policies. This is confirming the technical
                 st.markdown("**Test Result:**")
                 st.info(test_result)
         
-        if st.button("✅ Knowledge Base Ready - Start Using App", type="primary", use_container_width=True, key="ready_button"):
-            st.session_state.knowledge_base_ready = True
-            st.session_state.student_name = None  # Reset to go back to login
-            st.success("✅ Redirecting to login page...")
-            st.rerun()
+        st.markdown("---")
+        st.markdown("### 🎯 Setup Complete!")
+        st.markdown("""
+        Your AI revision buddy is ready! The knowledge base is loaded with your documents.
+        
+        **Next step:** Click the button below to return to the login page where students can access the app.
+        """)
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            if st.button("✅ Exit Setup - Go To Login", type="primary", use_container_width=True, key="ready_button"):
+                # Clear admin mode and go back
+                st.session_state.pop('student_name', None)
+                st.session_state.knowledge_base_ready = True
+                st.rerun()
+        
+        with col2:
+            if st.button("🔄 Reload App", use_container_width=True, key="reload_button"):
+                st.session_state.clear()
+                st.session_state.knowledge_base_ready = True
+                st.rerun()
+        
+        st.markdown("---")
+        st.info("💡 **Alternative:** Just refresh your browser (F5) to return to the login page.")
         
         st.markdown("---")
         st.caption("💡 Tip: After clicking the button above, you'll return to the login page where students can start using the app.")
@@ -1008,11 +1024,14 @@ def show_progress():
 
 # Main app logic
 def main():
-    if st.session_state.student_name is None:
-        show_login()
-    elif st.session_state.student_name == "admin_setup":
+    # Check if we're in setup mode
+    if st.session_state.student_name == "admin_setup":
         show_setup_page()
+    elif st.session_state.student_name is None:
+        # Not logged in - show login
+        show_login()
     else:
+        # Logged in as student - show main app
         show_main_app()
 
 if __name__ == "__main__":
