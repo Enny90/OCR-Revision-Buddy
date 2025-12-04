@@ -129,7 +129,9 @@ def show_admin_panel():
         st.warning("⚠️ No documents uploaded yet")
     
     st.markdown("---")
-    st.caption("💡 Tip: Add `?admin=true` to the URL to access this panel anytime")import streamlit as st
+    st.caption("💡 Tip: Add `?admin=true` to the URL to access this panel anytime")
+
+# System promptimport streamlit as st
 from datetime import datetime
 import json
 
