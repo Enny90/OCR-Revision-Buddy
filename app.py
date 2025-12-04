@@ -573,6 +573,16 @@ elif len(st.session_state.messages) == 0:
             st.session_state.admin_mode = True
             st.rerun()
     
+    # Show document status indicator
+    if st.session_state.uploaded_documents:
+        st.markdown(f"""
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 12px; font-weight: 500;">
+                ✓ {len(st.session_state.uploaded_documents)} knowledge document(s) active
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
         st.markdown("""
         <div class="hero-container">
@@ -618,6 +628,17 @@ elif len(st.session_state.messages) == 0:
 else:
     # Show buttons at top right when in chat mode
     col1, col2, col3 = st.columns([8, 1, 1])
+    
+    # Show document status in chat mode
+    if st.session_state.uploaded_documents:
+        with col1:
+            st.markdown(f"""
+            <div style="padding: 0.5rem 0;">
+                <span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                    ✓ Using {len(st.session_state.uploaded_documents)} OCR document(s)
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
     
     with col2:
         # Secret admin button
