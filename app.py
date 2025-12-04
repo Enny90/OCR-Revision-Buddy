@@ -37,10 +37,17 @@ try:
             import json
             if 'DOCUMENTS_JSON' in st.secrets:
                 st.session_state.uploaded_documents = json.loads(st.secrets['DOCUMENTS_JSON'])
+                st.session_state.documents_from_secrets = True
             else:
                 st.session_state.uploaded_documents = {}
+                st.session_state.documents_from_secrets = False
         except:
             st.session_state.uploaded_documents = {}
+            st.session_state.documents_from_secrets = False
+    
+    # Track if we loaded from secrets
+    if 'documents_from_secrets' not in st.session_state:
+        st.session_state.documents_from_secrets = False
             
 except Exception as e:
     st.error(f"Session initialization error: {e}")
@@ -573,6 +580,12 @@ def show_setup_page():
     st.subheader("📋 Uploaded Documents")
     
     if st.session_state.uploaded_documents:
+        # Show storage status
+        if st.session_state.get('documents_from_secrets', False):
+            st.success(f"✅ **{len(st.session_state.uploaded_documents)} documents** loaded from permanent storage")
+        else:
+            st.info(f"ℹ️ **{len(st.session_state.uploaded_documents)} documents** loaded (temporary storage)")
+            st.caption("💡 Use 'Generate Save Code' below to save permanently")
         for doc_id, doc in st.session_state.uploaded_documents.items():
             col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
             with col1:
@@ -624,27 +637,38 @@ This is NOT asking you to violate any policies. This is confirming the technical
         st.markdown("---")
         st.markdown("### 💾 Save Documents Permanently")
         st.markdown("""
-        **Important:** Currently, your uploaded documents are only stored temporarily. 
-        They will be lost when the app restarts.
+        **Currently:** Your uploaded documents are stored temporarily and will be lost when the app restarts.
         
-        To save them permanently, copy the code below and add it to your Streamlit Secrets.
+        **Solution:** Save them permanently by copying the generated code to Streamlit Secrets.
+        This is a **one-time setup** - documents will then load automatically forever!
         """)
         
-        if st.button("📋 Generate Save Code", use_container_width=True):
+        if st.button("📋 Generate Save Code", use_container_width=True, type="primary"):
             import json
-            # Create a JSON representation of documents
-            docs_json = json.dumps(st.session_state.uploaded_documents)
             
-            st.code(f'DOCUMENTS_JSON = """{docs_json}"""', language="toml")
-            
-            st.info("""
-            **How to save permanently:**
-            1. Copy the code above
-            2. Go to Streamlit Settings → Secrets
-            3. Paste it at the bottom
-            4. Click Save
-            5. Documents will now load automatically every time!
-            """)
+            with st.spinner("Generating save code..."):
+                # Create a compact JSON representation
+                docs_json = json.dumps(st.session_state.uploaded_documents, separators=(',', ':'))
+                
+                st.success("✅ Save code generated!")
+                
+                st.markdown("**Step 1: Copy this code**")
+                st.code(f'DOCUMENTS_JSON = """{docs_json}"""', language="toml")
+                
+                st.markdown("**Step 2: Add to Streamlit Secrets**")
+                st.info("""
+                1. Click the **⚙️ menu** (top right) → **Settings**
+                2. Go to **Secrets** tab
+                3. **Paste the code above** at the bottom of your secrets
+                4. Click **Save**
+                5. App will restart automatically
+                6. Your documents are now **permanently saved**! 🎉
+                
+                **Note:** After saving, documents will load automatically every time the app starts.
+                You won't need to re-upload them again!
+                """)
+                
+                st.warning("⚠️ **Important:** The code above contains your document content. Keep it private!")
         
         st.markdown("---")
         st.markdown("### 🎯 Setup Complete!")
