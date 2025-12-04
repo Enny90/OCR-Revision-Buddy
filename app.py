@@ -211,6 +211,16 @@ st.markdown("""
         background-color: #0d8a6a;
     }
     
+    /* Typing cursor animation */
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+    
+    .blinking-cursor {
+        animation: blink 1s step-start infinite;
+    }
+    
     /* Typing indicator */
     .typing-indicator {
         color: #6e6e80;
@@ -288,8 +298,8 @@ If non-Business topics: "I'm designed for OCR GCSE Business (J204). What Busines
 
 Use uploaded documents if available for accuracy."""
 
-def call_ai(user_message):
-    """Call AI with document context"""
+def call_ai(user_message, stream_placeholder=None):
+    """Call AI with document context and streaming"""
     try:
         openai_key = st.secrets.get("OPENAI_API_KEY", "")
         anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
@@ -304,39 +314,69 @@ def call_ai(user_message):
         messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
         messages.append({"role": "user", "content": user_message})
         
-        # Try OpenAI
+        # Try OpenAI with streaming
         if openai_key:
             import openai
+            import time
             client = openai.OpenAI(api_key=openai_key)
             
             system_msg = SYSTEM_PROMPT
             if doc_context:
                 system_msg += f"\n\n{doc_context}"
             
-            response = client.chat.completions.create(
+            stream = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "system", "content": system_msg}] + messages,
                 max_tokens=1500,
-                temperature=0.7
+                temperature=0.7,
+                stream=True
             )
-            return response.choices[0].message.content
+            
+            # Stream the response
+            full_response = ""
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                    if stream_placeholder:
+                        stream_placeholder.markdown(f"""
+                        <div class="chat-message assistant">
+                            <div class="message-role">📘 OCR Business Buddy</div>
+                            <div class="message-content">{full_response}▊</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    time.sleep(0.01)  # Small delay for smooth streaming
+            
+            return full_response
         
-        # Try Anthropic
+        # Try Anthropic with streaming
         elif anthropic_key:
             import anthropic
+            import time
             client = anthropic.Anthropic(api_key=anthropic_key)
             
             full_msg = user_message
             if doc_context:
                 full_msg = f"{doc_context}\n\nStudent: {user_message}"
             
-            response = client.messages.create(
+            full_response = ""
+            with client.messages.stream(
                 model="claude-sonnet-4-20250514",
                 max_tokens=1500,
                 system=SYSTEM_PROMPT,
                 messages=messages[:-1] + [{"role": "user", "content": full_msg}]
-            )
-            return response.content[0].text
+            ) as stream:
+                for text in stream.text_stream:
+                    full_response += text
+                    if stream_placeholder:
+                        stream_placeholder.markdown(f"""
+                        <div class="chat-message assistant">
+                            <div class="message-role">📘 OCR Business Buddy</div>
+                            <div class="message-content">{full_response}▊</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    time.sleep(0.01)
+            
+            return full_response
         
         else:
             return """👋 **Welcome to OCR Business Revision Buddy!**
@@ -443,11 +483,29 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Get AI response
-    with st.spinner("✏️ Thinking..."):
-        response = call_ai(prompt)
+    # Show user message immediately
+    st.markdown(f"""
+    <div class="chat-message user">
+        <div class="message-role">👤 You</div>
+        <div class="message-content">{prompt}</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Add assistant message
+    # Create placeholder for streaming response
+    response_placeholder = st.empty()
+    
+    # Show typing indicator
+    response_placeholder.markdown("""
+    <div class="typing-indicator">✏️ Thinking...</div>
+    """, unsafe_allow_html=True)
+    
+    # Get AI response with streaming
+    response = call_ai(prompt, stream_placeholder=response_placeholder)
+    
+    # Clear placeholder and show final message
+    response_placeholder.empty()
+    
+    # Add assistant message to history
     st.session_state.messages.append({"role": "assistant", "content": response})
     
     st.rerun()
