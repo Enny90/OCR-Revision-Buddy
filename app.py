@@ -10,139 +10,224 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for ChatGPT-style interface
+# Custom CSS for light ChatGPT-style interface
 st.markdown("""
 <style>
-    /* Hide Streamlit elements */
+    /* Hide all Streamlit default elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stDeployButton {display: none;}
+    section[data-testid="stSidebar"] {display: none;}
+    [data-testid="stHeader"] {display: none;}
     
-    /* Chat container */
+    /* Main app background - light grey like ChatGPT */
     .stApp {
-        background-color: #343541;
+        background-color: #f7f7f8;
     }
     
-    /* Header styling */
-    [data-testid="stHeader"] {
-        background-color: #202123;
-        border-bottom: 1px solid #4d4d4f;
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 6rem;
+        max-width: 900px;
     }
     
-    /* Hide sidebar by default */
-    section[data-testid="stSidebar"] {
-        display: none;
+    /* Hero section - centered */
+    .hero-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 3rem 1rem 2rem 1rem;
+        position: relative;
+    }
+    
+    .hero-icon {
+        font-size: 48px;
+        margin-bottom: 1rem;
+    }
+    
+    .hero-title {
+        font-size: 32px;
+        font-weight: 600;
+        color: #202123;
+        margin-bottom: 0.5rem;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    .hero-subtitle {
+        font-size: 16px;
+        color: #6e6e80;
+        margin-bottom: 2.5rem;
+        max-width: 600px;
+        line-height: 1.5;
+    }
+    
+    /* Restart button - top right of hero */
+    .restart-container {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+    
+    .stButton button {
+        background-color: white;
+        border: 1px solid #d1d5db;
+        color: #374151;
+        border-radius: 24px;
+        padding: 0.5rem 1rem;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: all 0.2s;
+    }
+    
+    .stButton button:hover {
+        background-color: #f9fafb;
+        border-color: #9ca3af;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Suggestion chips - ONE ROW */
+    .chips-container {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+        flex-wrap: nowrap;
+        max-width: 900px;
+        margin: 0 auto 3rem auto;
+        padding: 0 1rem;
+    }
+    
+    .chip-button {
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 24px;
+        padding: 0.65rem 1.25rem;
+        font-size: 13px;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+        line-height: 1.4;
+    }
+    
+    .chip-button:hover {
+        background-color: #f9fafb;
+        border-color: #d1d5db;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     /* Chat messages */
     .chat-message {
-        padding: 1.5rem;
-        border-radius: 0.5rem;
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
         margin-bottom: 1rem;
-        display: flex;
-        gap: 1rem;
-        max-width: 900px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        max-width: 750px;
         margin-left: auto;
         margin-right: auto;
     }
     
     .chat-message.user {
-        background-color: #343541;
+        background-color: #f9fafb;
     }
     
     .chat-message.assistant {
-        background-color: #444654;
+        background-color: white;
     }
     
-    .chat-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        flex-shrink: 0;
-    }
-    
-    .chat-avatar.user {
-        background-color: #10a37f;
-    }
-    
-    .chat-avatar.assistant {
-        background-color: #5436DA;
-    }
-    
-    .chat-content {
-        flex: 1;
-        color: #ececf1;
-        line-height: 1.7;
-        font-size: 16px;
-    }
-    
-    /* Landing page */
-    .landing-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 60vh;
-        text-align: center;
-        padding: 3rem 1.5rem;
-    }
-    
-    .landing-icon {
-        font-size: 64px;
-        margin-bottom: 1rem;
-    }
-    
-    .landing-title {
-        font-size: 32px;
+    .message-role {
         font-weight: 600;
-        color: #ececf1;
+        font-size: 14px;
+        color: #374151;
         margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
-    .landing-subtitle {
-        font-size: 16px;
-        color: #c5c5d2;
-        margin-bottom: 3rem;
-        max-width: 600px;
+    .message-content {
+        color: #374151;
+        line-height: 1.7;
+        font-size: 15px;
     }
     
-    /* Suggestion chips */
-    .stButton button {
-        background-color: #40414f;
-        border: 1px solid #565869;
-        color: #ececf1;
-        border-radius: 12px;
-        padding: 1rem 1.25rem;
-        width: 100%;
-        text-align: left;
-        transition: all 0.2s;
+    .message-content p {
+        margin-bottom: 0.75rem;
     }
     
-    .stButton button:hover {
-        background-color: #4d4d4f;
-        border-color: #8e8ea0;
-    }
-    
-    /* Input styling */
+    /* Chat input - fixed at bottom */
     .stChatInputContainer {
-        background-color: #343541;
-        border-top: 1px solid #4d4d4f;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, #f7f7f8 60%, transparent);
+        padding: 1.5rem 1rem 1.5rem 1rem;
+        z-index: 100;
+    }
+    
+    .stChatInput {
+        max-width: 720px;
+        margin: 0 auto;
     }
     
     .stChatInput textarea {
-        background-color: #40414f;
-        border: 1px solid #565869;
-        border-radius: 12px;
-        color: #ececf1;
+        background-color: white;
+        border: 1px solid #d1d5db;
+        border-radius: 24px;
+        color: #374151;
+        padding: 0.75rem 3rem 0.75rem 1rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        font-size: 15px;
     }
     
     .stChatInput textarea:focus {
-        border-color: #8e8ea0;
+        border-color: #9ca3af;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    
+    .stChatInput button {
+        background-color: #10a37f;
+        border: none;
+        border-radius: 12px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .stChatInput button:hover {
+        background-color: #0d8a6a;
+    }
+    
+    /* Typing indicator */
+    .typing-indicator {
+        color: #6e6e80;
+        font-size: 14px;
+        font-style: italic;
+        text-align: center;
+        padding: 1rem;
+    }
+    
+    /* Remove extra padding */
+    .element-container {
+        margin-bottom: 0;
+    }
+    
+    /* Ensure no scrollbar on main container */
+    .main {
+        overflow-x: hidden;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -279,71 +364,79 @@ What would you like to revise? 📚"""
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
-# Header with restart button
-col1, col2 = st.columns([6, 1])
-with col1:
-    st.markdown("<h2 style='color: #ececf1; margin: 0; padding: 0.5rem 0;'>📘 OCR Business Revision Buddy</h2>", unsafe_allow_html=True)
-with col2:
-    if st.button("↻ Restart"):
-        st.session_state.messages = []
-        st.rerun()
-
-# Landing page or chat
+# Landing page or chat view
 if len(st.session_state.messages) == 0:
-    st.markdown("""
-    <div class="landing-container">
-        <div class="landing-icon">📘</div>
-        <h1 class="landing-title">OCR Business Revision Buddy</h1>
-        <p class="landing-subtitle">
-            Friendly GCSE OCR Business revision helper with interactive questions and feedback
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Hero section
+    col1, col2, col3 = st.columns([1, 6, 1])
     
-    # Suggestion chips
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📚 Explain aims & objectives (Unit 1.4)", use_container_width=True):
-            prompt = "Explain business aims and objectives (Unit 1.4)"
-            st.session_state.messages.append({"role": "user", "content": prompt})
+    with col3:
+        # Restart button (even though no messages yet, for consistency)
+        if st.button("↻ Restart"):
+            st.session_state.messages = []
             st.rerun()
-        
-        if st.button("📊 Give me 5 MCQs on Unit 2.2", use_container_width=True):
-            prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
+    
+    with col2:
+        st.markdown("""
+        <div class="hero-container">
+            <div class="hero-icon">📘</div>
+            <h1 class="hero-title">OCR Business Revision Buddy</h1>
+            <p class="hero-subtitle">
+                Friendly GCSE OCR Business revision helper with interactive questions and feedback
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Suggestion chips - ONE ROW
+    st.markdown('<div class="chips-container">', unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
+            prompt = "Explain business aims and objectives (Unit 1.4)"
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.rerun()
     
     with col2:
-        if st.button("👥 Test me on Unit 1.5 (Stakeholders)", use_container_width=True):
+        if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
             prompt = "Test me on Unit 1.5 - Stakeholders in business"
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.rerun()
-        
-        if st.button("📝 Mark my 9-mark answer", use_container_width=True):
+    
+    with col3:
+        if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
+            prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.rerun()
+    
+    with col4:
+        if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
             prompt = "I have a 9-mark answer to be marked"
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 else:
+    # Show restart button at top right when in chat mode
+    col1, col2 = st.columns([9, 1])
+    with col2:
+        if st.button("↻ Restart", key="restart_chat"):
+            st.session_state.messages = []
+            st.rerun()
+    
     # Display chat messages
     for message in st.session_state.messages:
-        with st.container():
-            if message["role"] == "user":
-                st.markdown(f"""
-                <div class="chat-message user">
-                    <div class="chat-avatar user">👤</div>
-                    <div class="chat-content">{message["content"]}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                content = message["content"].replace("\n", "<br>")
-                content = content.replace("**", "<strong>").replace("**", "</strong>")
-                st.markdown(f"""
-                <div class="chat-message assistant">
-                    <div class="chat-avatar assistant">📘</div>
-                    <div class="chat-content">{content}</div>
-                </div>
-                """, unsafe_allow_html=True)
+        role = "You" if message["role"] == "user" else "OCR Business Buddy"
+        role_class = message["role"]
+        icon = "👤" if message["role"] == "user" else "📘"
+        
+        st.markdown(f"""
+        <div class="chat-message {role_class}">
+            <div class="message-role">{icon} {role}</div>
+            <div class="message-content">{message["content"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Chat input (always at bottom)
 if prompt := st.chat_input("Ask a Business question or request a quiz…"):
@@ -351,7 +444,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
     # Get AI response
-    with st.spinner("✏️ OCR Business Revision Buddy is typing..."):
+    with st.spinner("✏️ Thinking..."):
         response = call_ai(prompt)
     
     # Add assistant message
