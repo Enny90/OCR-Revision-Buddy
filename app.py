@@ -344,7 +344,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(0.01)  # Small delay for smooth streaming
+                    time.sleep(0.03)  # Slower typing speed (was 0.01)
             
             return full_response
         
@@ -374,7 +374,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(0.01)
+                    time.sleep(0.03)  # Slower typing speed (was 0.01)
             
             return full_response
         
