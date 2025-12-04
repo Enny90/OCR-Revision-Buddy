@@ -7,28 +7,43 @@ import io
 st.set_page_config(
     page_title="OCR Business Revision Buddy",
     page_icon="📚",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Initialize session state
-if 'student_name' not in st.session_state:
-    st.session_state.student_name = None
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = []
-if 'quiz_mode' not in st.session_state:
-    st.session_state.quiz_mode = False
-if 'current_question' not in st.session_state:
-    st.session_state.current_question = None
-if 'student_answer' not in st.session_state:
-    st.session_state.student_answer = ""
-if 'quiz_history' not in st.session_state:
-    st.session_state.quiz_history = []
-if 'selected_topic' not in st.session_state:
-    st.session_state.selected_topic = None
-if 'uploaded_documents' not in st.session_state:
-    st.session_state.uploaded_documents = {}
-if 'knowledge_base_ready' not in st.session_state:
-    st.session_state.knowledge_base_ready = False
+# Initialize session state with error handling
+try:
+    if 'student_name' not in st.session_state:
+        st.session_state.student_name = None
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    if 'quiz_mode' not in st.session_state:
+        st.session_state.quiz_mode = False
+    if 'current_question' not in st.session_state:
+        st.session_state.current_question = None
+    if 'student_answer' not in st.session_state:
+        st.session_state.student_answer = ""
+    if 'quiz_history' not in st.session_state:
+        st.session_state.quiz_history = []
+    if 'selected_topic' not in st.session_state:
+        st.session_state.selected_topic = None
+    if 'knowledge_base_ready' not in st.session_state:
+        st.session_state.knowledge_base_ready = False
+    
+    # Load persistent documents from secrets if available
+    if 'uploaded_documents' not in st.session_state:
+        # Try to load from Streamlit secrets (persistent storage)
+        try:
+            import json
+            if 'DOCUMENTS_JSON' in st.secrets:
+                st.session_state.uploaded_documents = json.loads(st.secrets['DOCUMENTS_JSON'])
+            else:
+                st.session_state.uploaded_documents = {}
+        except:
+            st.session_state.uploaded_documents = {}
+            
+except Exception as e:
+    st.error(f"Session initialization error: {e}")
 
 # OCR GCSE Business Topics (J204 Specification - Exact Match)
 # Component 01: Business activity, marketing and people
@@ -607,6 +622,31 @@ This is NOT asking you to violate any policies. This is confirming the technical
                 st.info(test_result)
         
         st.markdown("---")
+        st.markdown("### 💾 Save Documents Permanently")
+        st.markdown("""
+        **Important:** Currently, your uploaded documents are only stored temporarily. 
+        They will be lost when the app restarts.
+        
+        To save them permanently, copy the code below and add it to your Streamlit Secrets.
+        """)
+        
+        if st.button("📋 Generate Save Code", use_container_width=True):
+            import json
+            # Create a JSON representation of documents
+            docs_json = json.dumps(st.session_state.uploaded_documents)
+            
+            st.code(f'DOCUMENTS_JSON = """{docs_json}"""', language="toml")
+            
+            st.info("""
+            **How to save permanently:**
+            1. Copy the code above
+            2. Go to Streamlit Settings → Secrets
+            3. Paste it at the bottom
+            4. Click Save
+            5. Documents will now load automatically every time!
+            """)
+        
+        st.markdown("---")
         st.markdown("### 🎯 Setup Complete!")
         st.markdown("""
         Your AI revision buddy is ready! The knowledge base is loaded with your documents.
@@ -1024,15 +1064,23 @@ def show_progress():
 
 # Main app logic
 def main():
-    # Check if we're in setup mode
-    if st.session_state.student_name == "admin_setup":
-        show_setup_page()
-    elif st.session_state.student_name is None:
-        # Not logged in - show login
-        show_login()
-    else:
-        # Logged in as student - show main app
-        show_main_app()
+    try:
+        # Check if we're in setup mode
+        if st.session_state.student_name == "admin_setup":
+            show_setup_page()
+        elif st.session_state.student_name is None:
+            # Not logged in - show login
+            show_login()
+        else:
+            # Logged in as student - show main app
+            show_main_app()
+    except Exception as e:
+        st.error(f"⚠️ App Error: {e}")
+        st.info("Try refreshing the page (F5) or clearing your browser cache.")
+        
+        if st.button("🔄 Reset App"):
+            st.session_state.clear()
+            st.rerun()
 
 if __name__ == "__main__":
     main()
