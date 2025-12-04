@@ -1,4 +1,135 @@
-import streamlit as st
+def extract_text_from_pdf(pdf_file):
+    """Extract text from PDF file"""
+    try:
+        import PyPDF2
+        pdf_file.seek(0)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page_num in range(len(pdf_reader.pages)):
+            try:
+                page = pdf_reader.pages[page_num]
+                text += page.extract_text() + "\n\n"
+            except:
+                text += f"[Error reading page {page_num + 1}]\n"
+        return text if len(text.strip()) > 100 else f"⚠️ Only {len(text)} characters extracted."
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def process_uploaded_file(uploaded_file, doc_type):
+    """Process uploaded file"""
+    try:
+        if uploaded_file.type == "application/pdf":
+            text_content = extract_text_from_pdf(uploaded_file)
+        else:
+            text_content = uploaded_file.read().decode('utf-8')
+        
+        return {
+            'name': uploaded_file.name,
+            'type': doc_type,
+            'content': text_content,
+            'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+    except Exception as e:
+        return {
+            'name': uploaded_file.name,
+            'type': doc_type,
+            'content': f"Error: {str(e)}",
+            'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+
+def show_admin_panel():
+    """Show admin panel for document management"""
+    st.markdown("---")
+    st.markdown("## 🔧 Admin Panel - Document Management")
+    st.info("👨‍🏫 Teacher Mode: Upload OCR materials for the AI to use")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.markdown("### Upload Documents")
+        
+        # Document upload sections
+        doc_type = st.selectbox(
+            "Document Type:",
+            ["OCR Specification", "Past Paper/Mark Scheme", "Textbook", "Revision Guide", "Other"]
+        )
+        
+        uploaded_files = st.file_uploader(
+            "Choose PDF files",
+            type=['pdf'],
+            accept_multiple_files=True,
+            key="admin_upload"
+        )
+        
+        if uploaded_files:
+            if st.button("📤 Process Documents", type="primary"):
+                with st.spinner("Processing documents..."):
+                    for uploaded_file in uploaded_files:
+                        doc_data = process_uploaded_file(uploaded_file, doc_type)
+                        doc_id = f"doc_{len(st.session_state.uploaded_documents)}"
+                        st.session_state.uploaded_documents[doc_id] = doc_data
+                        
+                        chars = len(doc_data['content'])
+                        if chars > 1000:
+                            st.success(f"✅ {uploaded_file.name}: {chars:,} characters")
+                        else:
+                            st.warning(f"⚠️ {uploaded_file.name}: Only {chars} characters")
+    
+    with col2:
+        st.markdown("### Quick Actions")
+        
+        if st.button("🔄 Exit Admin Mode"):
+            st.session_state.admin_mode = False
+            st.rerun()
+        
+        if st.button("🗑️ Clear All Documents"):
+            st.session_state.uploaded_documents = {}
+            st.success("Documents cleared!")
+            st.rerun()
+    
+    # Show uploaded documents
+    st.markdown("---")
+    st.markdown("### 📋 Current Documents")
+    
+    if st.session_state.uploaded_documents:
+        for doc_id, doc in st.session_state.uploaded_documents.items():
+            with st.expander(f"📄 {doc['name']} ({doc['type']})"):
+                st.write(f"**Characters:** {len(doc.get('content', '')):,}")
+                st.write(f"**Uploaded:** {doc['uploaded_at']}")
+                st.text_area(
+                    "Preview:",
+                    doc.get('content', '')[:500] + "...",
+                    height=100,
+                    key=f"preview_{doc_id}"
+                )
+                if st.button(f"🗑️ Delete", key=f"delete_{doc_id}"):
+                    del st.session_state.uploaded_documents[doc_id]
+                    st.rerun()
+        
+        st.success(f"✅ {len(st.session_state.uploaded_documents)} documents loaded")
+        
+        # Generate save code
+        st.markdown("---")
+        st.markdown("### 💾 Save Permanently to Secrets")
+        
+        if st.button("📋 Generate Save Code", type="primary"):
+            docs_json = json.dumps(st.session_state.uploaded_documents, separators=(',', ':'))
+            
+            st.code(f'DOCUMENTS_JSON = """{docs_json}"""', language="toml")
+            
+            st.info("""
+            **To save permanently:**
+            1. Copy the code above
+            2. Go to Settings → Secrets
+            3. Paste at the bottom
+            4. Click Save
+            5. Documents will load automatically!
+            """)
+    else:
+        st.warning("⚠️ No documents uploaded yet")
+    
+    st.markdown("---")
+    st.caption("💡 Tip: Add `?admin=true` to the URL to access this panel anytime")import streamlit as st
 from datetime import datetime
 import json
 
@@ -9,6 +140,16 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Check for admin mode via URL parameter
+query_params = st.query_params
+is_admin = query_params.get("admin") == "true"
+
+# Also check session state for admin mode
+if 'admin_mode' not in st.session_state:
+    st.session_state.admin_mode = is_admin
+elif is_admin:
+    st.session_state.admin_mode = True
 
 # Custom CSS for light ChatGPT-style interface
 st.markdown("""
@@ -405,14 +546,29 @@ What would you like to revise? 📚"""
         return f"⚠️ Error: {str(e)}"
 
 # Landing page or chat view
-if len(st.session_state.messages) == 0:
+if st.session_state.admin_mode:
+    # Show admin panel
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem 1rem;">
+        <h1 style="color: #202123; font-size: 32px; font-weight: 600; margin-bottom: 0.5rem;">
+            📚 OCR Business Revision Buddy
+        </h1>
+        <p style="color: #6e6e80; font-size: 16px; margin-bottom: 2rem;">
+            Admin Panel - Document Management
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    show_admin_panel()
+
+elif len(st.session_state.messages) == 0:
     # Hero section
     col1, col2, col3 = st.columns([1, 6, 1])
     
     with col3:
-        # Restart button (even though no messages yet, for consistency)
-        if st.button("↻ Restart"):
-            st.session_state.messages = []
+        # Secret admin button (looks like restart)
+        if st.button("⚙️", key="secret_admin", help="Admin Panel"):
+            st.session_state.admin_mode = True
             st.rerun()
     
     with col2:
@@ -459,9 +615,16 @@ if len(st.session_state.messages) == 0:
 
 else:
     # Show restart button at top right when in chat mode
-    col1, col2 = st.columns([9, 1])
+    col1, col2, col3 = st.columns([8, 1, 1])
+    
     with col2:
-        if st.button("↻ Restart", key="restart_chat"):
+        # Secret admin button
+        if st.button("⚙️", key="admin_chat", help="Admin"):
+            st.session_state.admin_mode = True
+            st.rerun()
+    
+    with col3:
+        if st.button("↻", key="restart_chat", help="Restart"):
             st.session_state.messages = []
             st.rerun()
     
