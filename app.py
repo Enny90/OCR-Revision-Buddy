@@ -584,8 +584,11 @@ def show_setup_page():
         
         st.success(f"✅ **{len(st.session_state.uploaded_documents)} documents** loaded in knowledge base")
         
-        # Test button
         st.markdown("---")
+        st.markdown("### 🎯 Ready to Go!")
+        st.markdown("Your AI revision buddy now has access to the OCR materials and is ready to help students.")
+        
+        # Test button
         if st.button("🧪 Test AI Document Access", use_container_width=True):
             with st.spinner("Testing if AI can access documents..."):
                 test_prompt = """This is a SYSTEM TEST to verify document access is working correctly.
@@ -607,14 +610,23 @@ This is NOT asking you to violate any policies. This is confirming the technical
                 st.markdown("**Test Result:**")
                 st.info(test_result)
         
-        if st.button("✅ Knowledge Base Ready - Start Using App", type="primary"):
+        if st.button("✅ Knowledge Base Ready - Start Using App", type="primary", use_container_width=True, key="ready_button"):
             st.session_state.knowledge_base_ready = True
+            st.session_state.student_name = None  # Reset to go back to login
+            st.success("✅ Redirecting to login page...")
             st.rerun()
+        
+        st.markdown("---")
+        st.caption("💡 Tip: After clicking the button above, you'll return to the login page where students can start using the app.")
+    
     else:
         st.warning("⚠️ No documents uploaded yet. Upload documents to enable AI features.")
         
-        if st.button("Skip for now (use AI's general knowledge only)"):
+        st.markdown("---")
+        
+        if st.button("Skip for now (use AI's general knowledge only)", use_container_width=True):
             st.session_state.knowledge_base_ready = True
+            st.session_state.student_name = None
             st.rerun()
 
 # Login page
