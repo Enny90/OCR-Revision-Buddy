@@ -36,6 +36,10 @@ if 'student_topic' not in st.session_state:
     st.session_state.student_topic = ""
 if 'student_info_submitted' not in st.session_state:
     st.session_state.student_info_submitted = False
+if 'awaiting_student_info' not in st.session_state:
+    st.session_state.awaiting_student_info = True
+if 'awaiting_topic' not in st.session_state:
+    st.session_state.awaiting_topic = False
 
 # Quiz mode and history
 if 'quiz_mode' not in st.session_state:
@@ -801,66 +805,32 @@ if st.session_state.admin_mode:
     show_admin_panel()
 
 elif len(st.session_state.messages) == 0:
-    # Student info form (if not submitted)
+    # Check if we need student info
     if not st.session_state.student_info_submitted:
+        # Show welcome and prompt for info
         st.markdown("""
-        <div style="text-align: center; padding: 2rem 1rem 1rem 1rem;">
-            <h2 style="color: #202123; font-size: 24px; font-weight: 600; margin-bottom: 0.5rem;">
-                👋 Welcome to OCR Business Revision Buddy
-            </h2>
-            <p style="color: #6e6e80; font-size: 14px; margin-bottom: 1.5rem;">
-                Let's personalize your revision session
+        <div class="hero-container">
+            <div class="hero-icon">📘</div>
+            <h1 class="hero-title">OCR Business Revision Buddy</h1>
+            <p class="hero-subtitle">
+                Friendly GCSE OCR Business revision helper with interactive questions and feedback
             </p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Student info inputs
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            student_name = st.text_input("Your first name", placeholder="e.g. Enitan", key="input_name")
-            
-            student_class = st.selectbox(
-                "Your class/group",
-                ["", "11A", "11B", "11C", "11D", "11E", "10A", "10B", "10C", "10D", "10E", "Other"],
-                key="input_class"
-            )
-            
-            student_topic = st.selectbox(
-                "Topic you want to focus on",
-                [
-                    "",
-                    "General revision",
-                    "Unit 1.1 - Business activity",
-                    "Unit 1.2 - Business planning", 
-                    "Unit 1.3 - Business ownership",
-                    "Unit 1.4 - Business aims and objectives",
-                    "Unit 1.5 - Stakeholders in business",
-                    "Unit 1.6 - Business growth",
-                    "Unit 2 - Marketing",
-                    "Unit 3 - People",
-                    "Unit 4 - Operations",
-                    "Unit 5 - Finance",
-                    "Unit 6 - Influences on business",
-                    "Unit 7 - Interdependent nature of business"
-                ],
-                key="input_topic"
-            )
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            if st.button("🚀 Start Revision Session", type="primary", use_container_width=True):
-                if student_name and student_class and student_topic:
-                    st.session_state.student_name = student_name
-                    st.session_state.student_class = student_class
-                    st.session_state.student_topic = student_topic
-                    st.session_state.student_info_submitted = True
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Please fill in all fields to continue")
-            
-            if st.button("Skip for now →", use_container_width=True):
-                st.session_state.student_info_submitted = True
-                st.rerun()
+        # Show the initial prompt message
+        st.markdown("""
+        <div class="chat-message assistant">
+            <div class="message-role">📘 OCR Business Buddy</div>
+            <div class="message-content">
+                👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.<br><br>
+                Please type:<br>
+                <strong>"Name/Initials, Class"</strong><br><br>
+                Example: "A.J., 10B1"<br><br>
+                Once I have that, I'll ask which topic you want to revise and set your Prep!
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     else:
         # Hero section (after student info submitted)
@@ -1033,6 +1003,53 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                     "content": f"❌ Incorrect password. Please try again. ({3 - st.session_state.password_attempts} attempts remaining)"
                 })
             st.rerun()
+    
+    # Check if awaiting student name and class
+    elif st.session_state.get('awaiting_student_info', False):
+        # Parse the input (expecting "Name, Class")
+        if ',' in prompt:
+            parts = [p.strip() for p in prompt.split(',')]
+            if len(parts) >= 2:
+                st.session_state.student_name = parts[0]
+                st.session_state.student_class = parts[1]
+                st.session_state.awaiting_student_info = False
+                st.session_state.awaiting_topic = True
+                
+                # Show user input
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                
+                # Ask for topic
+                response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.rerun()
+            else:
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "⚠️ Please use the format: **Name, Class**\n\nExample: A.J., 10B1"
+                })
+                st.rerun()
+        else:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": "⚠️ Please include a comma between your name and class.\n\nExample: **A.J., 10B1**"
+            })
+            st.rerun()
+    
+    # Check if awaiting topic selection
+    elif st.session_state.get('awaiting_topic', False):
+        st.session_state.student_topic = prompt
+        st.session_state.awaiting_topic = False
+        st.session_state.student_info_submitted = True
+        
+        # Show user input
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Confirmation message
+        response = f"Perfect! ✅\n\n**Your Prep is set up:**\n- Student: {st.session_state.student_name}\n- Class: {st.session_state.student_class}\n- Topic: {st.session_state.student_topic}\n\nLet's begin! What would you like to do?\n\n- Ask me to explain a concept\n- Request practice questions\n- Get a quiz to test yourself\n- Or just ask me anything about {st.session_state.student_topic}! 🚀"
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()
     
     else:
         # Normal chat flow
