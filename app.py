@@ -26,47 +26,89 @@ if 'messages' not in st.session_state:
 # NEW: GitHub document loading function
 def load_documents_from_github():
     """Load documents from GitHub using credentials in secrets"""
+    error_log = []
+    
     try:
         # Check if GitHub credentials exist in secrets
         if 'github' not in st.secrets:
+            error_log.append("❌ No 'github' section in secrets")
+            st.session_state['github_error'] = error_log
             return {}
         
-        github_token = st.secrets['github']['token']
-        repo_name = st.secrets['github']['repo_name']
+        github_token = st.secrets['github'].get('token', '')
+        repo_name = st.secrets['github'].get('repo_name', '')
+        
+        if not github_token:
+            error_log.append("❌ No token found in secrets")
+            st.session_state['github_error'] = error_log
+            return {}
+        
+        if not repo_name:
+            error_log.append("❌ No repo_name found in secrets")
+            st.session_state['github_error'] = error_log
+            return {}
+        
+        error_log.append(f"✅ Token exists (length: {len(github_token)})")
+        error_log.append(f"✅ Repo name: {repo_name}")
         
         from github import Github
         import base64
         import io
         
         # Connect to GitHub
-        g = Github(github_token)
-        repo = g.get_repo(repo_name)
+        try:
+            g = Github(github_token)
+            user = g.get_user()
+            error_log.append(f"✅ Connected as: {user.login}")
+        except Exception as e:
+            error_log.append(f"❌ Authentication failed: {str(e)}")
+            st.session_state['github_error'] = error_log
+            return {}
+        
+        # Get repository
+        try:
+            repo = g.get_repo(repo_name)
+            error_log.append(f"✅ Repository found: {repo.full_name}")
+        except Exception as e:
+            error_log.append(f"❌ Repository access failed: {str(e)}")
+            st.session_state['github_error'] = error_log
+            return {}
         
         # Recursive function to get all files
         def get_all_files(path=""):
             all_files = []
-            contents = repo.get_contents(path)
-            
-            for content in contents:
-                if content.type == "dir":
-                    all_files.extend(get_all_files(content.path))
-                elif content.name.endswith('.txt'):
-                    all_files.append(content)
+            try:
+                contents = repo.get_contents(path)
+                
+                for content in contents:
+                    if content.type == "dir":
+                        all_files.extend(get_all_files(content.path))
+                    elif content.name.endswith('.txt'):
+                        all_files.append(content)
+                        error_log.append(f"📄 Found: {content.name}")
+            except Exception as e:
+                error_log.append(f"⚠️ Error reading path '{path}': {str(e)}")
             
             return all_files
         
         # Get all .txt files
+        error_log.append("🔍 Searching for .txt files...")
         files = get_all_files()
+        error_log.append(f"✅ Found {len(files)} .txt files")
         
         documents = {}
         doc_count = 0
         
         for content in files:
             try:
+                error_log.append(f"⏳ Processing: {content.name}")
+                
                 # Try to get decoded content directly first
                 try:
                     text = content.decoded_content.decode('utf-8', errors='ignore')
-                except:
+                    error_log.append(f"✅ Decoded {content.name}: {len(text)} chars")
+                except Exception as e1:
+                    error_log.append(f"⚠️ Direct decode failed, trying base64...")
                     # Fallback to base64 decoding with padding fix
                     encoded_content = content.content
                     missing_padding = len(encoded_content) % 4
@@ -75,6 +117,7 @@ def load_documents_from_github():
                     
                     file_content = base64.b64decode(encoded_content)
                     text = file_content.decode('utf-8', errors='ignore')
+                    error_log.append(f"✅ Base64 decode {content.name}: {len(text)} chars")
                 
                 # Add to documents
                 documents[f"doc_{doc_count}"] = {
@@ -86,12 +129,16 @@ def load_documents_from_github():
                 doc_count += 1
             
             except Exception as e:
-                continue  # Skip files that fail
+                error_log.append(f"❌ Failed to process {content.name}: {str(e)}")
+                continue
         
+        error_log.append(f"🎉 Successfully loaded {doc_count} documents!")
+        st.session_state['github_error'] = error_log
         return documents
     
     except Exception as e:
-        # If GitHub loading fails, return empty dict
+        error_log.append(f"❌ Unexpected error: {str(e)}")
+        st.session_state['github_error'] = error_log
         return {}
 
 # Initialize uploaded documents with GitHub auto-load
@@ -436,11 +483,20 @@ def show_admin_panel():
         st.success(f"✅ Connected to GitHub: `{st.secrets['github']['repo_name']}`")
         st.info(f"📚 {len(st.session_state.uploaded_documents)} documents loaded from GitHub")
         
+        # Show debug log if available
+        if 'github_error' in st.session_state:
+            with st.expander("🔍 Debug Log (Click to see details)"):
+                for log in st.session_state['github_error']:
+                    st.text(log)
+        
         if st.button("🔄 Reload from GitHub"):
-            github_docs = load_documents_from_github()
-            if github_docs:
-                st.session_state.uploaded_documents = github_docs
-                st.success(f"✅ Reloaded {len(github_docs)} documents!")
+            with st.spinner("Loading from GitHub..."):
+                github_docs = load_documents_from_github()
+                if github_docs:
+                    st.session_state.uploaded_documents = github_docs
+                    st.success(f"✅ Reloaded {len(github_docs)} documents!")
+                else:
+                    st.error("❌ Failed to load documents. Check debug log above.")
                 st.rerun()
     else:
         st.warning("⚠️ GitHub not configured. Documents will be uploaded manually.")
