@@ -22,10 +22,76 @@ elif is_admin:
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
+
+# NEW: GitHub document loading function
+def load_documents_from_github():
+    """Load documents from GitHub using credentials in secrets"""
+    try:
+        # Check if GitHub credentials exist in secrets
+        if 'github' not in st.secrets:
+            return {}
+        
+        github_token = st.secrets['github']['token']
+        repo_name = st.secrets['github']['repo_name']
+        
+        from github import Github
+        import base64
+        import io
+        
+        # Connect to GitHub
+        g = Github(github_token)
+        repo = g.get_repo(repo_name)
+        
+        # Get all files from repository
+        contents = repo.get_contents("")
+        
+        documents = {}
+        doc_count = 0
+        
+        for content in contents:
+            if content.type == "file" and content.name.endswith('.txt'):
+                try:
+                    # Fix padding if needed
+                    encoded_content = content.content
+                    missing_padding = len(encoded_content) % 4
+                    if missing_padding:
+                        encoded_content += '=' * (4 - missing_padding)
+                    
+                    # Decode content
+                    try:
+                        file_content = base64.b64decode(encoded_content)
+                        text = file_content.decode('utf-8', errors='ignore')
+                    except:
+                        text = content.decoded_content.decode('utf-8', errors='ignore')
+                    
+                    # Add to documents
+                    documents[f"doc_{doc_count}"] = {
+                        'name': content.name,
+                        'type': 'GitHub Document',
+                        'content': text,
+                        'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
+                    }
+                    doc_count += 1
+                
+                except Exception as e:
+                    continue  # Skip files that fail
+        
+        return documents
     
+    except Exception as e:
+        # If GitHub loading fails, return empty dict
+        return {}
+
+# Initialize uploaded documents with GitHub auto-load
 if 'uploaded_documents' not in st.session_state:
     try:
-        if 'DOCUMENTS_JSON' in st.secrets:
+        # First try loading from GitHub
+        github_docs = load_documents_from_github()
+        
+        if github_docs:
+            st.session_state.uploaded_documents = github_docs
+        # Fallback to old JSON method if GitHub not configured
+        elif 'DOCUMENTS_JSON' in st.secrets:
             st.session_state.uploaded_documents = json.loads(st.secrets['DOCUMENTS_JSON'])
         else:
             st.session_state.uploaded_documents = {}
@@ -352,12 +418,41 @@ def show_admin_panel():
     """Show admin panel for document management"""
     st.markdown("---")
     st.markdown("## 🔧 Admin Panel - Document Management")
+    
+    # NEW: Show GitHub status
+    if 'github' in st.secrets:
+        st.success(f"✅ Connected to GitHub: `{st.secrets['github']['repo_name']}`")
+        st.info(f"📚 {len(st.session_state.uploaded_documents)} documents loaded from GitHub")
+        
+        if st.button("🔄 Reload from GitHub"):
+            github_docs = load_documents_from_github()
+            if github_docs:
+                st.session_state.uploaded_documents = github_docs
+                st.success(f"✅ Reloaded {len(github_docs)} documents!")
+                st.rerun()
+    else:
+        st.warning("⚠️ GitHub not configured. Documents will be uploaded manually.")
+        with st.expander("📖 How to Connect GitHub"):
+            st.markdown("""
+            **To enable automatic document loading from GitHub:**
+            
+            1. Go to **Settings → Secrets**
+            2. Add this:
+            ```toml
+            [github]
+            token = "ghp_your_github_token_here"
+            repo_name = "Enny90/ocr-revision-materials"
+            ```
+            3. Save and restart the app
+            4. Documents will load automatically!
+            """)
+    
     st.info("👨‍🏫 Teacher Mode: Upload OCR materials for the AI to use")
     
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        st.markdown("### Upload Documents")
+        st.markdown("### Upload Documents (Manual)")
         
         doc_type = st.selectbox(
             "Document Type:",
@@ -417,24 +512,6 @@ def show_admin_panel():
                     st.rerun()
         
         st.success(f"✅ {len(st.session_state.uploaded_documents)} documents loaded")
-        
-        # Generate save code
-        st.markdown("---")
-        st.markdown("### 💾 Save Permanently to Secrets")
-        
-        if st.button("📋 Generate Save Code", type="primary"):
-            docs_json = json.dumps(st.session_state.uploaded_documents, separators=(',', ':'))
-            
-            st.code(f'DOCUMENTS_JSON = """{docs_json}"""', language="toml")
-            
-            st.info("""
-            **To save permanently:**
-            1. Copy the code above
-            2. Go to Settings → Secrets
-            3. Paste at the bottom
-            4. Click Save
-            5. Documents will load automatically!
-            """)
     else:
         st.warning("⚠️ No documents uploaded yet")
     
