@@ -805,9 +805,13 @@ if st.session_state.admin_mode:
     show_admin_panel()
 
 elif len(st.session_state.messages) == 0:
-    # Check if we need student info
-    if not st.session_state.student_info_submitted:
-        # Show welcome and prompt for info
+    # Hero section with chips (normal landing page)
+    col1, col2, col3 = st.columns([1, 6, 1])
+    
+    with col3:
+        pass  # Remove admin button from hero
+    
+    with col2:
         st.markdown("""
         <div class="hero-container">
             <div class="hero-icon">📘</div>
@@ -817,99 +821,77 @@ elif len(st.session_state.messages) == 0:
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Show the initial prompt message
-        st.markdown("""
-        <div class="chat-message assistant">
-            <div class="message-role">📘 OCR Business Buddy</div>
-            <div class="message-content">
-                👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.<br><br>
-                Please type:<br>
-                <strong>"Name/Initials, Class"</strong><br><br>
-                Example: "A.J., 10B1"<br><br>
-                Once I have that, I'll ask which topic you want to revise and set your Prep!
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
     
-    else:
-        # Hero section (after student info submitted)
-        col1, col2, col3 = st.columns([1, 6, 1])
-        
-        with col3:
-            pass  # Remove admin button from hero
-        
-        with col2:
-            # Show session info pill if student provided info
-            if st.session_state.student_name:
-                st.markdown(f"""
-                <div style="text-align: center; margin-bottom: 1rem;">
-                    <span style="background: #e0e7ff; color: #3730a3; padding: 0.4rem 1rem; border-radius: 20px; font-size: 13px; font-weight: 500;">
-                        👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div class="hero-container">
-                <div class="hero-icon">📘</div>
-                <h1 class="hero-title">OCR Business Revision Buddy</h1>
-                <p class="hero-subtitle">
-                    Friendly GCSE OCR Business revision helper with interactive questions and feedback
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Suggestion chips
-        st.markdown('<div class="chips-container">', unsafe_allow_html=True)
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
+    # Suggestion chips
+    st.markdown('<div class="chips-container">', unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
+            if not st.session_state.student_info_submitted:
+                st.session_state.messages.append({"role": "user", "content": "Explain business aims and objectives (Unit 1.4)"})
+                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.awaiting_student_info = True
+                st.rerun()
+            else:
                 prompt = "Explain business aims and objectives (Unit 1.4)"
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                # Get AI response
                 response = call_ai(prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                # Record if it's a quiz response
                 record_quiz_history(response)
                 st.rerun()
-        
-        with col2:
-            if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
+    
+    with col2:
+        if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
+            if not st.session_state.student_info_submitted:
+                st.session_state.messages.append({"role": "user", "content": "Test me on Unit 1.5 - Stakeholders in business"})
+                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.awaiting_student_info = True
+                st.rerun()
+            else:
                 prompt = "Test me on Unit 1.5 - Stakeholders in business"
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                # Get AI response
                 response = call_ai(prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                # Record if it's a quiz response
                 record_quiz_history(response)
                 st.rerun()
-        
-        with col3:
-            if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
+    
+    with col3:
+        if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
+            if not st.session_state.student_info_submitted:
+                st.session_state.messages.append({"role": "user", "content": "Give me 5 MCQs on Unit 2.2 - Market research"})
+                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.awaiting_student_info = True
+                st.rerun()
+            else:
                 prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                # Get AI response
                 response = call_ai(prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                # Record if it's a quiz response
                 record_quiz_history(response)
                 st.rerun()
-        
-        with col4:
-            if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
+    
+    with col4:
+        if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
+            if not st.session_state.student_info_submitted:
+                st.session_state.messages.append({"role": "user", "content": "I have a 9-mark answer to be marked"})
+                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.awaiting_student_info = True
+                st.rerun()
+            else:
                 prompt = "I have a 9-mark answer to be marked"
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                # Get AI response
                 response = call_ai(prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                # Record if it's a quiz response
                 record_quiz_history(response)
                 st.rerun()
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     # Show buttons at top right when in chat mode
@@ -1053,6 +1035,15 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     
     else:
         # Normal chat flow
+        # Check if student info submitted
+        if not st.session_state.student_info_submitted:
+            # Store their query and ask for info first
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.awaiting_student_info = True
+            st.rerun()
+        
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         
