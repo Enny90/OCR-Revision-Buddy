@@ -739,24 +739,36 @@ elif len(st.session_state.messages) == 0:
         if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
             prompt = "Explain business aims and objectives (Unit 1.4)"
             st.session_state.messages.append({"role": "user", "content": prompt})
+            # Get AI response
+            response = call_ai(prompt)
+            st.session_state.messages.append({"role": "assistant", "content": response})
             st.rerun()
     
     with col2:
         if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
             prompt = "Test me on Unit 1.5 - Stakeholders in business"
             st.session_state.messages.append({"role": "user", "content": prompt})
+            # Get AI response
+            response = call_ai(prompt)
+            st.session_state.messages.append({"role": "assistant", "content": response})
             st.rerun()
     
     with col3:
         if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
             prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
             st.session_state.messages.append({"role": "user", "content": prompt})
+            # Get AI response
+            response = call_ai(prompt)
+            st.session_state.messages.append({"role": "assistant", "content": response})
             st.rerun()
     
     with col4:
         if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
             prompt = "I have a 9-mark answer to be marked"
             st.session_state.messages.append({"role": "user", "content": prompt})
+            # Get AI response
+            response = call_ai(prompt)
+            st.session_state.messages.append({"role": "assistant", "content": response})
             st.rerun()
     
     st.markdown('</div>', unsafe_allow_html=True)
