@@ -10,6 +10,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Initialize session state for password
+if 'password_attempts' not in st.session_state:
+    st.session_state.password_attempts = 0
+
 # Check for admin mode via URL parameter
 query_params = st.query_params
 is_admin = query_params.get("admin") == "true"
@@ -713,20 +717,7 @@ elif len(st.session_state.messages) == 0:
     col1, col2, col3 = st.columns([1, 6, 1])
     
     with col3:
-        # Secret admin button
-        if st.button("⚙️", key="secret_admin", help="Admin Panel"):
-            st.session_state.admin_mode = True
-            st.rerun()
-    
-    # Show document status indicator
-    if st.session_state.uploaded_documents:
-        st.markdown(f"""
-        <div style="text-align: center; margin-bottom: 1rem;">
-            <span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 12px; font-weight: 500;">
-                ✓ {len(st.session_state.uploaded_documents)} knowledge document(s) active
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
+        pass  # Remove admin button from hero
     
     with col2:
         st.markdown("""
@@ -774,22 +765,8 @@ else:
     # Show buttons at top right when in chat mode
     col1, col2, col3 = st.columns([8, 1, 1])
     
-    # Show document status in chat mode
-    if st.session_state.uploaded_documents:
-        with col1:
-            st.markdown(f"""
-            <div style="padding: 0.5rem 0;">
-                <span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 11px; font-weight: 500;">
-                    ✓ Using {len(st.session_state.uploaded_documents)} OCR document(s)
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
-    
     with col2:
-        # Secret admin button
-        if st.button("⚙️", key="admin_chat", help="Admin"):
-            st.session_state.admin_mode = True
-            st.rerun()
+        pass  # Remove admin button
     
     with col3:
         if st.button("↻", key="restart_chat", help="Restart"):
@@ -808,35 +785,77 @@ else:
             <div class="message-content">{message["content"]}</div>
         </div>
         """, unsafe_allow_html=True)
+    
+    # Show password prompt if awaiting
+    if st.session_state.get('awaiting_password', False):
+        st.markdown("""
+        <div class="chat-message assistant">
+            <div class="message-role">📘 OCR Business Buddy</div>
+            <div class="message-content">🔒 Please enter the teacher password to access admin panel:</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Chat input (always at bottom)
 if prompt := st.chat_input("Ask a Business question or request a quiz…"):
-    # Add user message
-    st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Show user message immediately
-    st.markdown(f"""
-    <div class="chat-message user">
-        <div class="message-role">👤 You</div>
-        <div class="message-content">{prompt}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Check for teacher mode activation
+    if prompt.lower().strip() == "teacher mode":
+        # Show password input
+        st.session_state.messages.append({"role": "user", "content": "teacher mode"})
+        st.session_state.awaiting_password = True
+        st.rerun()
     
-    # Create placeholder for streaming response
-    response_placeholder = st.empty()
+    # Check for password if awaiting
+    elif st.session_state.get('awaiting_password', False):
+        if prompt == "RHS@2023":
+            st.session_state.admin_mode = True
+            st.session_state.awaiting_password = False
+            st.session_state.password_attempts = 0
+            st.session_state.messages = []  # Clear chat
+            st.rerun()
+        else:
+            st.session_state.password_attempts += 1
+            if st.session_state.password_attempts >= 3:
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": "❌ Too many incorrect password attempts. Please refresh the page to try again."
+                })
+                st.session_state.awaiting_password = False
+            else:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": f"❌ Incorrect password. Please try again. ({3 - st.session_state.password_attempts} attempts remaining)"
+                })
+            st.rerun()
     
-    # Show typing indicator
-    response_placeholder.markdown("""
-    <div class="typing-indicator">✏️ Thinking...</div>
-    """, unsafe_allow_html=True)
-    
-    # Get AI response with streaming
-    response = call_ai(prompt, stream_placeholder=response_placeholder)
-    
-    # Clear placeholder and show final message
-    response_placeholder.empty()
-    
-    # Add assistant message to history
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    
-    st.rerun()
+    else:
+        # Normal chat flow
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Show user message immediately
+        st.markdown(f"""
+        <div class="chat-message user">
+            <div class="message-role">👤 You</div>
+            <div class="message-content">{prompt}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create placeholder for streaming response
+        response_placeholder = st.empty()
+        
+        # Show typing indicator
+        response_placeholder.markdown("""
+        <div class="typing-indicator">✏️ Thinking...</div>
+        """, unsafe_allow_html=True)
+        
+        # Get AI response with streaming
+        response = call_ai(prompt, stream_placeholder=response_placeholder)
+        
+        # Clear placeholder and show final message
+        response_placeholder.empty()
+        
+        # Add assistant message to history
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        st.rerun()
