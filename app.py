@@ -27,6 +27,24 @@ elif is_admin:
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
+# Student identity & session metadata
+if 'student_name' not in st.session_state:
+    st.session_state.student_name = ""
+if 'student_class' not in st.session_state:
+    st.session_state.student_class = ""
+if 'student_topic' not in st.session_state:
+    st.session_state.student_topic = ""
+if 'student_info_submitted' not in st.session_state:
+    st.session_state.student_info_submitted = False
+
+# Quiz mode and history
+if 'quiz_mode' not in st.session_state:
+    st.session_state.quiz_mode = False
+if 'quiz_history' not in st.session_state:
+    st.session_state.quiz_history = []
+if 'current_quiz_set' not in st.session_state:
+    st.session_state.current_quiz_set = None
+
 # NEW: GitHub document loading function
 def load_documents_from_github():
     """Load documents from GitHub using credentials in secrets"""
@@ -587,8 +605,54 @@ def show_admin_panel():
     else:
         st.warning("⚠️ No documents uploaded yet")
     
+    # Quiz history export
+    st.markdown("---")
+    st.markdown("### 📥 Download Quiz Results (This Session)")
+    
+    if st.session_state.quiz_history:
+        st.info(f"📊 {len(st.session_state.quiz_history)} quiz attempt(s) recorded in this session")
+        
+        # Show preview
+        with st.expander("Preview quiz data"):
+            for idx, quiz in enumerate(st.session_state.quiz_history[:5], 1):
+                st.write(f"**{idx}. {quiz['student_name']} ({quiz['student_class']})** - {quiz['timestamp']}")
+                st.caption(f"Topic: {quiz['topic']}")
+                st.caption(quiz['raw_marking_text'][:200] + "...")
+                st.markdown("---")
+        
+        # Download button
+        json_data = json.dumps(st.session_state.quiz_history, indent=2)
+        st.download_button(
+            label="📥 Download quiz history as JSON",
+            data=json_data,
+            file_name=f"ocr_business_quiz_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+        
+        # Clear history option
+        if st.button("🗑️ Clear Quiz History", use_container_width=True):
+            st.session_state.quiz_history = []
+            st.success("Quiz history cleared!")
+            st.rerun()
+    else:
+        st.caption("📝 No quiz data in this session yet")
+    
     st.markdown("---")
     st.caption("💡 Tip: Add `?admin=true` to the URL to access this panel anytime")
+
+def record_quiz_history(assistant_message):
+    """Record quiz result if it contains marking/scoring"""
+    # Simple pattern matching for score indicators
+    if "Score:" in assistant_message or "score:" in assistant_message or "/2" in assistant_message or "/3" in assistant_message or "/6" in assistant_message:
+        quiz_record = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "student_name": st.session_state.get("student_name", ""),
+            "student_class": st.session_state.get("student_class", ""),
+            "topic": st.session_state.get("student_topic", ""),
+            "raw_marking_text": assistant_message
+        }
+        st.session_state.quiz_history.append(quiz_record)
 
 def call_ai(user_message, stream_placeholder=None):
     """Call AI with document context and streaming"""
@@ -603,6 +667,20 @@ def call_ai(user_message, stream_placeholder=None):
                 content = doc.get('content', '')[:15000]
                 doc_context += f"\n[OCR Document: {doc['name']}]\n{content}\n"
         
+        # Add student context if available
+        student_context = ""
+        if st.session_state.get('student_name'):
+            student_context = f"\nStudent: {st.session_state.student_name}"
+            if st.session_state.get('student_class'):
+                student_context += f" (Class {st.session_state.student_class})"
+            if st.session_state.get('student_topic'):
+                student_context += f"\nFocusing on: {st.session_state.student_topic}"
+        
+        # Add quiz mode instruction
+        quiz_mode_instruction = ""
+        if st.session_state.get('quiz_mode', False):
+            quiz_mode_instruction = "\n\nFor this conversation, behave as if you are in TEST MODE: focus on generating questions, marking answers, and giving scores. Only explain content in more depth after you have marked the student's attempt."
+        
         messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
         messages.append({"role": "user", "content": user_message})
         
@@ -615,6 +693,10 @@ def call_ai(user_message, stream_placeholder=None):
             system_msg = SYSTEM_PROMPT
             if doc_context:
                 system_msg += f"\n\n{doc_context}"
+            if student_context:
+                system_msg += f"\n\n{student_context}"
+            if quiz_mode_instruction:
+                system_msg += quiz_mode_instruction
             
             stream = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -646,6 +728,12 @@ def call_ai(user_message, stream_placeholder=None):
             import time
             client = anthropic.Anthropic(api_key=anthropic_key)
             
+            system_msg = SYSTEM_PROMPT
+            if student_context:
+                system_msg += f"\n\n{student_context}"
+            if quiz_mode_instruction:
+                system_msg += quiz_mode_instruction
+            
             full_msg = user_message
             if doc_context:
                 full_msg = f"{doc_context}\n\nStudent: {user_message}"
@@ -654,7 +742,7 @@ def call_ai(user_message, stream_placeholder=None):
             with client.messages.stream(
                 model="claude-sonnet-4-20250514",
                 max_tokens=1500,
-                system=SYSTEM_PROMPT,
+                system=system_msg,
                 messages=messages[:-1] + [{"role": "user", "content": full_msg}]
             ) as stream:
                 for text in stream.text_stream:
@@ -713,65 +801,145 @@ if st.session_state.admin_mode:
     show_admin_panel()
 
 elif len(st.session_state.messages) == 0:
-    # Hero section
-    col1, col2, col3 = st.columns([1, 6, 1])
-    
-    with col3:
-        pass  # Remove admin button from hero
-    
-    with col2:
+    # Student info form (if not submitted)
+    if not st.session_state.student_info_submitted:
         st.markdown("""
-        <div class="hero-container">
-            <div class="hero-icon">📘</div>
-            <h1 class="hero-title">OCR Business Revision Buddy</h1>
-            <p class="hero-subtitle">
-                Friendly GCSE OCR Business revision helper with interactive questions and feedback
+        <div style="text-align: center; padding: 2rem 1rem 1rem 1rem;">
+            <h2 style="color: #202123; font-size: 24px; font-weight: 600; margin-bottom: 0.5rem;">
+                👋 Welcome to OCR Business Revision Buddy
+            </h2>
+            <p style="color: #6e6e80; font-size: 14px; margin-bottom: 1.5rem;">
+                Let's personalize your revision session
             </p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Student info inputs
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            student_name = st.text_input("Your first name", placeholder="e.g. Enitan", key="input_name")
+            
+            student_class = st.selectbox(
+                "Your class/group",
+                ["", "11A", "11B", "11C", "11D", "11E", "10A", "10B", "10C", "10D", "10E", "Other"],
+                key="input_class"
+            )
+            
+            student_topic = st.selectbox(
+                "Topic you want to focus on",
+                [
+                    "",
+                    "General revision",
+                    "Unit 1.1 - Business activity",
+                    "Unit 1.2 - Business planning", 
+                    "Unit 1.3 - Business ownership",
+                    "Unit 1.4 - Business aims and objectives",
+                    "Unit 1.5 - Stakeholders in business",
+                    "Unit 1.6 - Business growth",
+                    "Unit 2 - Marketing",
+                    "Unit 3 - People",
+                    "Unit 4 - Operations",
+                    "Unit 5 - Finance",
+                    "Unit 6 - Influences on business",
+                    "Unit 7 - Interdependent nature of business"
+                ],
+                key="input_topic"
+            )
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            if st.button("🚀 Start Revision Session", type="primary", use_container_width=True):
+                if student_name and student_class and student_topic:
+                    st.session_state.student_name = student_name
+                    st.session_state.student_class = student_class
+                    st.session_state.student_topic = student_topic
+                    st.session_state.student_info_submitted = True
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Please fill in all fields to continue")
+            
+            if st.button("Skip for now →", use_container_width=True):
+                st.session_state.student_info_submitted = True
+                st.rerun()
     
-    # Suggestion chips
-    st.markdown('<div class="chips-container">', unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
-            prompt = "Explain business aims and objectives (Unit 1.4)"
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            # Get AI response
-            response = call_ai(prompt)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.rerun()
-    
-    with col2:
-        if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
-            prompt = "Test me on Unit 1.5 - Stakeholders in business"
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            # Get AI response
-            response = call_ai(prompt)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.rerun()
-    
-    with col3:
-        if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
-            prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            # Get AI response
-            response = call_ai(prompt)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.rerun()
-    
-    with col4:
-        if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
-            prompt = "I have a 9-mark answer to be marked"
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            # Get AI response
-            response = call_ai(prompt)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        # Hero section (after student info submitted)
+        col1, col2, col3 = st.columns([1, 6, 1])
+        
+        with col3:
+            pass  # Remove admin button from hero
+        
+        with col2:
+            # Show session info pill if student provided info
+            if st.session_state.student_name:
+                st.markdown(f"""
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <span style="background: #e0e7ff; color: #3730a3; padding: 0.4rem 1rem; border-radius: 20px; font-size: 13px; font-weight: 500;">
+                        👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div class="hero-container">
+                <div class="hero-icon">📘</div>
+                <h1 class="hero-title">OCR Business Revision Buddy</h1>
+                <p class="hero-subtitle">
+                    Friendly GCSE OCR Business revision helper with interactive questions and feedback
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Suggestion chips
+        st.markdown('<div class="chips-container">', unsafe_allow_html=True)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
+                prompt = "Explain business aims and objectives (Unit 1.4)"
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                # Get AI response
+                response = call_ai(prompt)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                # Record if it's a quiz response
+                record_quiz_history(response)
+                st.rerun()
+        
+        with col2:
+            if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
+                prompt = "Test me on Unit 1.5 - Stakeholders in business"
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                # Get AI response
+                response = call_ai(prompt)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                # Record if it's a quiz response
+                record_quiz_history(response)
+                st.rerun()
+        
+        with col3:
+            if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
+                prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                # Get AI response
+                response = call_ai(prompt)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                # Record if it's a quiz response
+                record_quiz_history(response)
+                st.rerun()
+        
+        with col4:
+            if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
+                prompt = "I have a 9-mark answer to be marked"
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                # Get AI response
+                response = call_ai(prompt)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                # Record if it's a quiz response
+                record_quiz_history(response)
+                st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     # Show buttons at top right when in chat mode
@@ -784,6 +952,32 @@ else:
         if st.button("↻", key="restart_chat", help="Restart"):
             st.session_state.messages = []
             st.rerun()
+    
+    # Quiz mode toggle and session info
+    col_toggle, col_history = st.columns([2, 1])
+    
+    with col_toggle:
+        quiz_mode = st.checkbox(
+            "🧪 Test mode (questions + marking)",
+            value=st.session_state.quiz_mode,
+            key="quiz_toggle",
+            help="Enable test mode for structured quizzes and marking"
+        )
+        st.session_state.quiz_mode = quiz_mode
+        
+        # Show session info if available
+        if st.session_state.student_name:
+            st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
+    
+    with col_history:
+        # Quiz history expander
+        if st.session_state.quiz_history:
+            with st.expander(f"📊 Quiz history ({len(st.session_state.quiz_history)})"):
+                for idx, quiz in enumerate(reversed(st.session_state.quiz_history[-10:]), 1):  # Show last 10
+                    st.markdown(f"**{quiz['timestamp'][:16]}** • {quiz['topic']}")
+                    snippet = quiz['raw_marking_text'][:120] + "..." if len(quiz['raw_marking_text']) > 120 else quiz['raw_marking_text']
+                    st.caption(snippet)
+                    st.markdown("---")
     
     # Display chat messages
     for message in st.session_state.messages:
@@ -869,5 +1063,8 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         
         # Add assistant message to history
         st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        # Record quiz history if it looks like marking
+        record_quiz_history(response)
         
         st.rerun()
