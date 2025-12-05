@@ -831,7 +831,7 @@ elif len(st.session_state.messages) == 0:
         if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "Explain business aims and objectives (Unit 1.4)"})
-                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -847,7 +847,7 @@ elif len(st.session_state.messages) == 0:
         if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "Test me on Unit 1.5 - Stakeholders in business"})
-                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -863,7 +863,7 @@ elif len(st.session_state.messages) == 0:
         if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "Give me 5 MCQs on Unit 2.2 - Market research"})
-                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -879,7 +879,7 @@ elif len(st.session_state.messages) == 0:
         if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "I have a 9-mark answer to be marked"})
-                response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+                response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -1029,7 +1029,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         # Confirmation message
-        response = f"Perfect! ✅\n\n**Your Prep is set up:**\n- Student: {st.session_state.student_name}\n- Class: {st.session_state.student_class}\n- Topic: {st.session_state.student_topic}\n\nLet's begin! What would you like to do?\n\n- Ask me to explain a concept\n- Request practice questions\n- Get a quiz to test yourself\n- Or just ask me anything about {st.session_state.student_topic}! 🚀"
+        response = f"Perfect! ✅\n\n**Your revision session is set up:**\n- Student: {st.session_state.student_name}\n- Class: {st.session_state.student_class}\n- Topic: {st.session_state.student_topic}\n\nLet's begin! What would you like to do?\n\n- Ask me to explain a concept\n- Request practice questions\n- Get a quiz to test yourself\n- Or just ask me anything about {st.session_state.student_topic}! 🚀"
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
     
@@ -1039,7 +1039,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         if not st.session_state.student_info_submitted:
             # Store their query and ask for info first
             st.session_state.messages.append({"role": "user", "content": prompt})
-            response = "👋 Before we start your Prep, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise and set your Prep!"
+            response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             st.session_state.messages.append({"role": "assistant", "content": response})
             st.session_state.awaiting_student_info = True
             st.rerun()
