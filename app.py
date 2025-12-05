@@ -42,39 +42,51 @@ def load_documents_from_github():
         g = Github(github_token)
         repo = g.get_repo(repo_name)
         
-        # Get all files from repository
-        contents = repo.get_contents("")
+        # Recursive function to get all files
+        def get_all_files(path=""):
+            all_files = []
+            contents = repo.get_contents(path)
+            
+            for content in contents:
+                if content.type == "dir":
+                    all_files.extend(get_all_files(content.path))
+                elif content.name.endswith('.txt'):
+                    all_files.append(content)
+            
+            return all_files
+        
+        # Get all .txt files
+        files = get_all_files()
         
         documents = {}
         doc_count = 0
         
-        for content in contents:
-            if content.type == "file" and content.name.endswith('.txt'):
+        for content in files:
+            try:
+                # Try to get decoded content directly first
                 try:
-                    # Fix padding if needed
+                    text = content.decoded_content.decode('utf-8', errors='ignore')
+                except:
+                    # Fallback to base64 decoding with padding fix
                     encoded_content = content.content
                     missing_padding = len(encoded_content) % 4
                     if missing_padding:
                         encoded_content += '=' * (4 - missing_padding)
                     
-                    # Decode content
-                    try:
-                        file_content = base64.b64decode(encoded_content)
-                        text = file_content.decode('utf-8', errors='ignore')
-                    except:
-                        text = content.decoded_content.decode('utf-8', errors='ignore')
-                    
-                    # Add to documents
-                    documents[f"doc_{doc_count}"] = {
-                        'name': content.name,
-                        'type': 'GitHub Document',
-                        'content': text,
-                        'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
-                    }
-                    doc_count += 1
+                    file_content = base64.b64decode(encoded_content)
+                    text = file_content.decode('utf-8', errors='ignore')
                 
-                except Exception as e:
-                    continue  # Skip files that fail
+                # Add to documents
+                documents[f"doc_{doc_count}"] = {
+                    'name': content.name,
+                    'type': 'GitHub Document',
+                    'content': text,
+                    'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
+                }
+                doc_count += 1
+            
+            except Exception as e:
+                continue  # Skip files that fail
         
         return documents
     
