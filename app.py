@@ -1050,8 +1050,12 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                 # Show user input
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 
-                # Ask for topic
+                # Ask for topic with typing effect
                 response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
+                
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.rerun()
             else:
@@ -1078,8 +1082,12 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         # Show user input
         st.session_state.messages.append({"role": "user", "content": prompt})
         
-        # Confirmation message
+        # Confirmation message with typing effect
         response = f"Perfect! ✅\n\n**Your revision session is set up:**\n- Student: {st.session_state.student_name}\n- Class: {st.session_state.student_class}\n- Topic: {st.session_state.student_topic}\n\nLet's begin! What would you like to do?\n\n- Ask me to explain a concept\n- Request practice questions\n- Get a quiz to test yourself\n- Or just ask me anything about {st.session_state.student_topic}! 🚀"
+        
+        msg_placeholder = st.empty()
+        show_message_with_typing(response, msg_placeholder)
+        
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
     
