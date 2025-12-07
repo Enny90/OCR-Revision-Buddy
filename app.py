@@ -658,6 +658,34 @@ def record_quiz_history(assistant_message):
         }
         st.session_state.quiz_history.append(quiz_record)
 
+def show_message_with_typing(message_content, placeholder=None):
+    """Display a message with typing effect"""
+    import time
+    
+    if placeholder is None:
+        placeholder = st.empty()
+    
+    displayed_text = ""
+    for char in message_content:
+        displayed_text += char
+        placeholder.markdown(f"""
+        <div class="chat-message assistant">
+            <div class="message-role">📘 OCR Business Buddy</div>
+            <div class="message-content">{displayed_text}▊</div>
+        </div>
+        """, unsafe_allow_html=True)
+        time.sleep(0.015)
+    
+    # Final display without cursor
+    placeholder.markdown(f"""
+    <div class="chat-message assistant">
+        <div class="message-role">📘 OCR Business Buddy</div>
+        <div class="message-content">{displayed_text}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    return displayed_text
+
 def call_ai(user_message, stream_placeholder=None):
     """Call AI with document context and streaming"""
     try:
@@ -722,7 +750,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(0.05)  # More deliberate typing speed
+                    time.sleep(0.015)  # More deliberate typing speed
             
             return full_response
         
@@ -758,7 +786,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(0.05)  # More deliberate typing speed
+                    time.sleep(0.015)  # More deliberate typing speed
             
             return full_response
         
@@ -831,7 +859,14 @@ elif len(st.session_state.messages) == 0:
         if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "Explain business aims and objectives (Unit 1.4)"})
+                
+                # Show typing effect for initial message
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+                
+                # Create placeholder and show with typing
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -847,7 +882,12 @@ elif len(st.session_state.messages) == 0:
         if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "Test me on Unit 1.5 - Stakeholders in business"})
+                
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+                
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -863,7 +903,12 @@ elif len(st.session_state.messages) == 0:
         if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "Give me 5 MCQs on Unit 2.2 - Market research"})
+                
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+                
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -879,7 +924,12 @@ elif len(st.session_state.messages) == 0:
         if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 st.session_state.messages.append({"role": "user", "content": "I have a 9-mark answer to be marked"})
+                
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+                
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -1039,7 +1089,12 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         if not st.session_state.student_info_submitted:
             # Store their query and ask for info first
             st.session_state.messages.append({"role": "user", "content": prompt})
+            
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+            
+            msg_placeholder = st.empty()
+            show_message_with_typing(response, msg_placeholder)
+            
             st.session_state.messages.append({"role": "assistant", "content": response})
             st.session_state.awaiting_student_info = True
             st.rerun()
