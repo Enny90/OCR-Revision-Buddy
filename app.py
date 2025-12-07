@@ -61,12 +61,6 @@ if 'quiz_history' not in st.session_state:
 if 'current_quiz_set' not in st.session_state:
     st.session_state.current_quiz_set = None
 
-# NEW: pending prompt state
-if 'pending_prompt' not in st.session_state:
-    st.session_state.pending_prompt = None
-if 'pending_source' not in st.session_state:
-    st.session_state.pending_source = None  # e.g. "chip", "chat"
-
 # NEW: GitHub document loading function
 def load_documents_from_github():
     """Load documents from GitHub using credentials in secrets"""
@@ -880,10 +874,6 @@ elif len(st.session_state.messages) == 0:
     with col1:
         if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
             if not st.session_state.student_info_submitted:
-                # NEW: Store pending prompt before asking for student info
-                st.session_state.pending_prompt = "Explain business aims and objectives (Unit 1.4)"
-                st.session_state.pending_source = "chip"
-                
                 st.session_state.messages.append({"role": "user", "content": "Explain business aims and objectives (Unit 1.4)"})
                 
                 # Show typing effect for initial message
@@ -907,10 +897,6 @@ elif len(st.session_state.messages) == 0:
     with col2:
         if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
             if not st.session_state.student_info_submitted:
-                # NEW: Store pending prompt before asking for student info
-                st.session_state.pending_prompt = "Test me on Unit 1.5 - Stakeholders in business"
-                st.session_state.pending_source = "chip"
-                
                 st.session_state.messages.append({"role": "user", "content": "Test me on Unit 1.5 - Stakeholders in business"})
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
@@ -932,10 +918,6 @@ elif len(st.session_state.messages) == 0:
     with col3:
         if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
             if not st.session_state.student_info_submitted:
-                # NEW: Store pending prompt before asking for student info
-                st.session_state.pending_prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
-                st.session_state.pending_source = "chip"
-                
                 st.session_state.messages.append({"role": "user", "content": "Give me 5 MCQs on Unit 2.2 - Market research"})
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
@@ -957,10 +939,6 @@ elif len(st.session_state.messages) == 0:
     with col4:
         if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
             if not st.session_state.student_info_submitted:
-                # NEW: Store pending prompt before asking for student info
-                st.session_state.pending_prompt = "I have a 9-mark answer to be marked"
-                st.session_state.pending_source = "chip"
-                
                 st.session_state.messages.append({"role": "user", "content": "I have a 9-mark answer to be marked"})
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
@@ -1141,42 +1119,19 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         # Show user input
         st.session_state.messages.append({"role": "user", "content": prompt})
         
-        # Confirmation message
+        # Confirmation message with typing effect
         response = f"Perfect! ✅\n\n**Your revision session is set up:**\n- Student: {st.session_state.student_name}\n- Class: {st.session_state.student_class}\n- Topic: {st.session_state.student_topic}\n\nLet's begin! What would you like to do?\n\n- Ask me to explain a concept\n- Request practice questions\n- Get a quiz to test yourself\n- Or just ask me anything about {st.session_state.student_topic}! 🚀"
         
+        msg_placeholder = st.empty()
+        show_message_with_typing(response, msg_placeholder)
+        
         st.session_state.messages.append({"role": "assistant", "content": response})
-        
-        # NEW: resume pending prompt after topic selection
-        # DEBUG: Show what we have
-        st.write(f"DEBUG: pending_prompt = {st.session_state.get('pending_prompt')}")
-        st.write(f"DEBUG: pending_source = {st.session_state.get('pending_source')}")
-        
-        if st.session_state.pending_prompt:
-            st.write(f"DEBUG: About to execute pending prompt!")
-            followup_prompt = st.session_state.pending_prompt
-            
-            # Call AI to get the response (don't use typing effect since we're about to rerun)
-            ai_response = call_ai(followup_prompt)
-            
-            # Add AI response to messages
-            st.session_state.messages.append({"role": "assistant", "content": ai_response})
-            record_quiz_history(ai_response)
-            
-            # Clear pending state
-            st.session_state.pending_prompt = None
-            st.session_state.pending_source = None
-            st.write(f"DEBUG: Cleared pending prompt!")
-        
         st.rerun()
     
     else:
         # Normal chat flow
         # Check if student info submitted
         if not st.session_state.student_info_submitted:
-            # NEW: Store pending prompt before asking for student info
-            st.session_state.pending_prompt = prompt
-            st.session_state.pending_source = "chat"
-            
             # Store their query and ask for info first
             st.session_state.messages.append({"role": "user", "content": prompt})
             
@@ -1191,10 +1146,6 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # NEW: Clear any leftover pending state when student manually types in normal chat flow (AFTER setup is complete)
-        st.session_state.pending_prompt = None
-        st.session_state.pending_source = None
         
         # Show user message immediately
         st.markdown(f"""
