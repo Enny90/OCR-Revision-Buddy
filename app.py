@@ -550,11 +550,11 @@ def show_admin_panel():
             
             1. Go to **Settings → Secrets**
             2. Add this:
-```toml
+            ```toml
             [github]
             token = "ghp_your_github_token_here"
             repo_name = "Enny90/ocr-revision-materials"
-```
+            ```
             3. Save and restart the app
             4. Documents will load automatically!
             """)
@@ -1194,12 +1194,12 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             st.session_state.awaiting_student_info = True
             st.rerun()
         
-        # NEW: Clear any leftover pending state when student manually types in normal chat flow
-        st.session_state.pending_prompt = None
-        st.session_state.pending_source = None
-        
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # NEW: Clear any leftover pending state when student manually types in normal chat flow (AFTER setup is complete)
+        st.session_state.pending_prompt = None
+        st.session_state.pending_source = None
         
         # Show user message immediately
         st.markdown(f"""
