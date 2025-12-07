@@ -1141,11 +1141,8 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         # Show user input
         st.session_state.messages.append({"role": "user", "content": prompt})
         
-        # Confirmation message with typing effect
+        # Confirmation message
         response = f"Perfect! ✅\n\n**Your revision session is set up:**\n- Student: {st.session_state.student_name}\n- Class: {st.session_state.student_class}\n- Topic: {st.session_state.student_topic}\n\nLet's begin! What would you like to do?\n\n- Ask me to explain a concept\n- Request practice questions\n- Get a quiz to test yourself\n- Or just ask me anything about {st.session_state.student_topic}! 🚀"
-        
-        msg_placeholder = st.empty()
-        show_message_with_typing(response, msg_placeholder)
         
         st.session_state.messages.append({"role": "assistant", "content": response})
         
@@ -1153,18 +1150,10 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         if st.session_state.pending_prompt:
             followup_prompt = st.session_state.pending_prompt
             
-            # Add the stored prompt as a user message
-            st.session_state.messages.append({"role": "user", "content": followup_prompt})
+            # Call AI to get the response (don't use typing effect since we're about to rerun)
+            ai_response = call_ai(followup_prompt)
             
-            # Use streaming like normal chat
-            response_placeholder = st.empty()
-            response_placeholder.markdown("""
-            <div class="typing-indicator">✏️ Thinking...</div>
-            """, unsafe_allow_html=True)
-            
-            ai_response = call_ai(followup_prompt, stream_placeholder=response_placeholder)
-            response_placeholder.empty()
-            
+            # Add AI response to messages
             st.session_state.messages.append({"role": "assistant", "content": ai_response})
             record_quiz_history(ai_response)
             
