@@ -2,6 +2,9 @@ import streamlit as st
 from datetime import datetime
 import json
 
+# Typing speed control
+TYPING_DELAY = 0.06  # adjust this value to control typing speed
+
 # Page config - MUST BE FIRST
 st.set_page_config(
     page_title="OCR Business Revision Buddy",
@@ -674,7 +677,7 @@ def show_message_with_typing(message_content, placeholder=None):
             <div class="message-content">{displayed_text}▊</div>
         </div>
         """, unsafe_allow_html=True)
-        time.sleep(0.015)
+        time.sleep(TYPING_DELAY)
     
     # Final display without cursor
     placeholder.markdown(f"""
@@ -750,7 +753,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(0.015)  # More deliberate typing speed
+                    time.sleep(TYPING_DELAY)  # More deliberate typing speed
             
             return full_response
         
@@ -786,7 +789,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(0.015)  # More deliberate typing speed
+                    time.sleep(TYPING_DELAY)  # More deliberate typing speed
             
             return full_response
         
