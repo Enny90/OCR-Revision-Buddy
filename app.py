@@ -5,6 +5,15 @@ import json
 # Typing speed control
 TYPING_DELAY = 0.06  # adjust this value to control typing speed
 
+def get_dynamic_delay(message):
+    length = len(message)
+    if length < 80:
+        return 0.02   # short messages → fast typing
+    elif length < 300:
+        return 0.04   # medium messages → medium speed
+    else:
+        return 0.07   # long messages → slower typing for readability
+
 # Page config - MUST BE FIRST
 st.set_page_config(
     page_title="OCR Business Revision Buddy",
@@ -668,6 +677,8 @@ def show_message_with_typing(message_content, placeholder=None):
     if placeholder is None:
         placeholder = st.empty()
     
+    delay = get_dynamic_delay(message_content)
+    
     displayed_text = ""
     for char in message_content:
         displayed_text += char
@@ -677,7 +688,7 @@ def show_message_with_typing(message_content, placeholder=None):
             <div class="message-content">{displayed_text}▊</div>
         </div>
         """, unsafe_allow_html=True)
-        time.sleep(TYPING_DELAY)
+        time.sleep(delay)
     
     # Final display without cursor
     placeholder.markdown(f"""
@@ -742,6 +753,7 @@ def call_ai(user_message, stream_placeholder=None):
             )
             
             # Stream the response
+            delay = get_dynamic_delay(user_message)
             full_response = ""
             for chunk in stream:
                 if chunk.choices[0].delta.content:
@@ -753,7 +765,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(TYPING_DELAY)  # More deliberate typing speed
+                    time.sleep(delay)  # More deliberate typing speed
             
             return full_response
         
@@ -774,6 +786,7 @@ def call_ai(user_message, stream_placeholder=None):
                 full_msg = f"{doc_context}\n\nStudent: {user_message}"
             
             full_response = ""
+            delay = get_dynamic_delay(user_message)
             with client.messages.stream(
                 model="claude-sonnet-4-20250514",
                 max_tokens=1500,
@@ -789,7 +802,7 @@ def call_ai(user_message, stream_placeholder=None):
                             <div class="message-content">{full_response}▊</div>
                         </div>
                         """, unsafe_allow_html=True)
-                    time.sleep(TYPING_DELAY)  # More deliberate typing speed
+                    time.sleep(delay)  # More deliberate typing speed
             
             return full_response
         
