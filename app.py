@@ -1147,7 +1147,12 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         st.session_state.messages.append({"role": "assistant", "content": response})
         
         # NEW: resume pending prompt after topic selection
+        # DEBUG: Show what we have
+        st.write(f"DEBUG: pending_prompt = {st.session_state.get('pending_prompt')}")
+        st.write(f"DEBUG: pending_source = {st.session_state.get('pending_source')}")
+        
         if st.session_state.pending_prompt:
+            st.write(f"DEBUG: About to execute pending prompt!")
             followup_prompt = st.session_state.pending_prompt
             
             # Call AI to get the response (don't use typing effect since we're about to rerun)
@@ -1160,6 +1165,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             # Clear pending state
             st.session_state.pending_prompt = None
             st.session_state.pending_source = None
+            st.write(f"DEBUG: Cleared pending prompt!")
         
         st.rerun()
     
