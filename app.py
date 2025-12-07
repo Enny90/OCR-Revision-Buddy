@@ -1056,24 +1056,45 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     elif st.session_state.get('awaiting_student_info', False):
         # Parse the input (expecting "Name, Class")
         if ',' in prompt:
-            parts = [p.strip() for p in prompt.split(',')]
+            parts = [p.strip() for p in prompt.split(',', 1)]  # Split only on first comma
             if len(parts) >= 2:
-                st.session_state.student_name = parts[0]
-                st.session_state.student_class = parts[1]
-                st.session_state.awaiting_student_info = False
-                st.session_state.awaiting_topic = True
+                # Basic validation: name and class should be short (not full sentences/questions)
+                name_part = parts[0]
+                class_part = parts[1]
                 
-                # Show user input
-                st.session_state.messages.append({"role": "user", "content": prompt})
+                # Check if this looks like valid student info (not a question)
+                # Valid if: short enough, class part looks like a class code
+                is_valid = (
+                    len(name_part) < 30 and 
+                    len(class_part) < 30 and
+                    not any(word in prompt.lower() for word in ['what', 'how', 'why', 'when', 'where', 'explain', 'tell', 'can you'])
+                )
                 
-                # Ask for topic with typing effect
-                response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
-                
-                msg_placeholder = st.empty()
-                show_message_with_typing(response, msg_placeholder)
-                
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                st.rerun()
+                if is_valid:
+                    st.session_state.student_name = name_part
+                    st.session_state.student_class = class_part
+                    st.session_state.awaiting_student_info = False
+                    st.session_state.awaiting_topic = True
+                    
+                    # Show user input
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    
+                    # Ask for topic with typing effect
+                    response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
+                    
+                    msg_placeholder = st.empty()
+                    show_message_with_typing(response, msg_placeholder)
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    st.rerun()
+                else:
+                    # Input has comma but doesn't look like valid student info
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": "⚠️ I need your name and class first before we can start!\n\nPlease use the format: **Name, Class**\n\nExample: **A.J., 10B1**"
+                    })
+                    st.rerun()
             else:
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 st.session_state.messages.append({
