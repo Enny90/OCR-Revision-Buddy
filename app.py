@@ -1108,9 +1108,8 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                         st.session_state.student_topic = "OCR GCSE Business"
                         st.session_state.student_info_submitted = True
                         
-                        # Show brief confirmation
-                        response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nLet me help you with that..."
-                        
+                        # Show brief confirmation (without typing effect)
+                        response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚"
                         st.session_state.messages.append({"role": "assistant", "content": response})
                         
                         # Execute pending prompt immediately
@@ -1119,18 +1118,22 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                         # Add the user message now
                         st.session_state.messages.append({"role": "user", "content": followup_prompt})
                         
-                        # Call AI
-                        ai_response = call_ai(followup_prompt)
-                        
-                        # Add AI response to messages
-                        st.session_state.messages.append({"role": "assistant", "content": ai_response})
-                        record_quiz_history(ai_response)
+                        # Call AI without streaming (we'll show it on rerun)
+                        try:
+                            ai_response = call_ai(followup_prompt)
+                            
+                            # Add AI response to messages
+                            st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                            record_quiz_history(ai_response)
+                        except Exception as e:
+                            st.session_state.messages.append({"role": "assistant", "content": f"⚠️ Error generating response: {str(e)}"})
                         
                         # Clear pending state
                         st.session_state.pending_prompt = None
                         st.session_state.pending_source = None
                         
                         st.rerun()
+                    
                     else:
                         # No pending prompt - ask for topic as normal
                         st.session_state.awaiting_topic = True
