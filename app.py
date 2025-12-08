@@ -884,7 +884,7 @@ elif len(st.session_state.messages) == 0:
                 st.session_state.pending_prompt = "Explain business aims and objectives (Unit 1.4)"
                 st.session_state.pending_source = "chip"
                 
-                st.session_state.messages.append({"role": "user", "content": "Explain business aims and objectives (Unit 1.4)"})
+                # Don't add user message yet - we'll add it when we execute it
                 
                 # Show typing effect for initial message
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
@@ -911,7 +911,7 @@ elif len(st.session_state.messages) == 0:
                 st.session_state.pending_prompt = "Test me on Unit 1.5 - Stakeholders in business"
                 st.session_state.pending_source = "chip"
                 
-                st.session_state.messages.append({"role": "user", "content": "Test me on Unit 1.5 - Stakeholders in business"})
+                # Don't add user message yet
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 
@@ -933,10 +933,12 @@ elif len(st.session_state.messages) == 0:
         if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
             if not st.session_state.student_info_submitted:
                 # NEW: Store pending prompt before asking for student info
+                # NOTE: We DON'T add the user message here - we'll add it later when we execute it
                 st.session_state.pending_prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
                 st.session_state.pending_source = "chip"
                 
-                st.session_state.messages.append({"role": "user", "content": "Give me 5 MCQs on Unit 2.2 - Market research"})
+                # Don't add user message yet!
+                # st.session_state.messages.append({"role": "user", "content": "Give me 5 MCQs on Unit 2.2 - Market research"})
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 
@@ -961,7 +963,7 @@ elif len(st.session_state.messages) == 0:
                 st.session_state.pending_prompt = "I have a 9-mark answer to be marked"
                 st.session_state.pending_source = "chip"
                 
-                st.session_state.messages.append({"role": "user", "content": "I have a 9-mark answer to be marked"})
+                # Don't add user message yet
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 
@@ -1096,19 +1098,52 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                     st.session_state.student_name = name_part
                     st.session_state.student_class = class_part
                     st.session_state.awaiting_student_info = False
-                    st.session_state.awaiting_topic = True
                     
                     # Show user input
                     st.session_state.messages.append({"role": "user", "content": prompt})
                     
-                    # Ask for topic with typing effect
-                    response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
-                    
-                    msg_placeholder = st.empty()
-                    show_message_with_typing(response, msg_placeholder)
-                    
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                    st.rerun()
+                    # NEW: Check if there's a pending prompt - if so, skip topic question
+                    if st.session_state.pending_prompt:
+                        # Auto-set topic based on pending prompt or use generic
+                        st.session_state.student_topic = "OCR GCSE Business"
+                        st.session_state.student_info_submitted = True
+                        
+                        # Show brief confirmation
+                        response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nLet me help you with that..."
+                        
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                        
+                        # Execute pending prompt immediately
+                        followup_prompt = st.session_state.pending_prompt
+                        
+                        # Add the user message now
+                        st.session_state.messages.append({"role": "user", "content": followup_prompt})
+                        
+                        # Call AI
+                        ai_response = call_ai(followup_prompt)
+                        
+                        # Add AI response to messages
+                        st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                        record_quiz_history(ai_response)
+                        
+                        # Clear pending state
+                        st.session_state.pending_prompt = None
+                        st.session_state.pending_source = None
+                        
+                        st.rerun()
+                    else:
+                        # No pending prompt - ask for topic as normal
+                        st.session_state.awaiting_topic = True
+                        
+                        # Ask for topic with typing effect
+                        response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
+                        
+                        msg_placeholder = st.empty()
+                        show_message_with_typing(response, msg_placeholder)
+                        
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                        st.rerun()
+                
                 else:
                     # Input has comma but doesn't look like valid student info
                     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -1146,16 +1181,14 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         
         st.session_state.messages.append({"role": "assistant", "content": response})
         
-        # NEW: resume pending prompt after topic selection
-        # DEBUG: Show what we have
-        st.write(f"DEBUG: pending_prompt = {st.session_state.get('pending_prompt')}")
-        st.write(f"DEBUG: pending_source = {st.session_state.get('pending_source')}")
-        
+        # NEW: resume pending prompt after topic selection (only if user manually chose topic)
         if st.session_state.pending_prompt:
-            st.write(f"DEBUG: About to execute pending prompt!")
             followup_prompt = st.session_state.pending_prompt
             
-            # Call AI to get the response (don't use typing effect since we're about to rerun)
+            # NOW add the user message (it wasn't added before)
+            st.session_state.messages.append({"role": "user", "content": followup_prompt})
+            
+            # Call AI to get the response
             ai_response = call_ai(followup_prompt)
             
             # Add AI response to messages
@@ -1165,7 +1198,6 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             # Clear pending state
             st.session_state.pending_prompt = None
             st.session_state.pending_source = None
-            st.write(f"DEBUG: Cleared pending prompt!")
         
         st.rerun()
     
@@ -1177,8 +1209,8 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             st.session_state.pending_prompt = prompt
             st.session_state.pending_source = "chat"
             
+            # Don't add user message yet - we'll add it when we execute it
             # Store their query and ask for info first
-            st.session_state.messages.append({"role": "user", "content": prompt})
             
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             
