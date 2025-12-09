@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import json
+import time
 
 # Typing speed control
 TYPING_DELAY = 0.06
@@ -70,6 +71,10 @@ if 'pending_source' not in st.session_state:
 # Flag to hide hero/chips after any interaction
 if 'setup_started' not in st.session_state:
     st.session_state.setup_started = False
+
+# NEW: Track which message should show typing effect (store message index)
+if 'typing_message_index' not in st.session_state:
+    st.session_state.typing_message_index = None
 
 # GitHub document loading function
 def load_documents_from_github():
@@ -372,6 +377,29 @@ def record_quiz_history(assistant_message):
         }
         st.session_state.quiz_history.append(quiz_record)
 
+def show_message_with_typing(message_content, placeholder):
+    """Display a message with typing effect"""
+    delay = get_dynamic_delay(message_content)
+    
+    displayed_text = ""
+    for char in message_content:
+        displayed_text += char
+        placeholder.markdown(f"""
+        <div class="chat-message assistant">
+            <div class="message-role">📘 OCR Business Buddy</div>
+            <div class="message-content">{displayed_text}▊</div>
+        </div>
+        """, unsafe_allow_html=True)
+        time.sleep(delay)
+    
+    # Final display without cursor
+    placeholder.markdown(f"""
+    <div class="chat-message assistant">
+        <div class="message-role">📘 OCR Business Buddy</div>
+        <div class="message-content">{displayed_text}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
 def call_ai(user_message, stream_placeholder=None):
     """Call AI with document context"""
     try:
@@ -479,6 +507,7 @@ elif not st.session_state.setup_started:
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             
             st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.typing_message_index = len(st.session_state.messages) - 1
             st.session_state.awaiting_student_info = True
             st.rerun()
     
@@ -491,6 +520,7 @@ elif not st.session_state.setup_started:
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             
             st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.typing_message_index = len(st.session_state.messages) - 1
             st.session_state.awaiting_student_info = True
             st.rerun()
     
@@ -503,6 +533,7 @@ elif not st.session_state.setup_started:
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             
             st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.typing_message_index = len(st.session_state.messages) - 1
             st.session_state.awaiting_student_info = True
             st.rerun()
     
@@ -515,6 +546,7 @@ elif not st.session_state.setup_started:
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             
             st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.typing_message_index = len(st.session_state.messages) - 1
             st.session_state.awaiting_student_info = True
             st.rerun()
 
@@ -535,24 +567,36 @@ else:
             st.session_state.awaiting_topic = False
             st.session_state.pending_prompt = None
             st.session_state.pending_source = None
+            st.session_state.typing_message_index = None
             st.rerun()
     
     # Session info
     if st.session_state.student_name:
         st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
     
-    # Display chat messages
-    for message in st.session_state.messages:
+    # Display chat messages with typing effect for flagged message
+    for idx, message in enumerate(st.session_state.messages):
         role = "You" if message["role"] == "user" else "OCR Business Buddy"
         role_class = message["role"]
         icon = "👤" if message["role"] == "user" else "📘"
         
-        st.markdown(f"""
-        <div class="chat-message {role_class}">
-            <div class="message-role">{icon} {role}</div>
-            <div class="message-content">{message["content"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Check if this message should show typing effect
+        should_type = (idx == st.session_state.typing_message_index and message["role"] == "assistant")
+        
+        if should_type:
+            # Show with typing effect
+            placeholder = st.empty()
+            show_message_with_typing(message["content"], placeholder)
+            # Clear the flag after showing typing
+            st.session_state.typing_message_index = None
+        else:
+            # Show normally
+            st.markdown(f"""
+            <div class="chat-message {role_class}">
+                <div class="message-role">{icon} {role}</div>
+                <div class="message-content">{message["content"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # Chat input
 if prompt := st.chat_input("Ask a Business question or request a quiz…"):
@@ -639,6 +683,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
             
             st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.typing_message_index = len(st.session_state.messages) - 1
             st.session_state.awaiting_student_info = True
             st.rerun()
         
