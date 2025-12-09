@@ -866,10 +866,15 @@ elif not st.session_state.setup_started:
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 
-                # Add message and rerun - let it display naturally
+                # Show typing effect immediately
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
+                # Add message and rerun
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
+
             else:
                 prompt = "Explain business aims and objectives (Unit 1.4)"
                 st.session_state.messages.append({"role": "user", "content": prompt})
@@ -891,6 +896,10 @@ elif not st.session_state.setup_started:
                 # Don't add user message yet
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+                
+                # Show typing effect
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
                 
                 # Add message and rerun
                 st.session_state.messages.append({"role": "assistant", "content": response})
@@ -919,6 +928,10 @@ elif not st.session_state.setup_started:
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
                 
+                # Show typing effect
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
+                
                 # Add message and rerun - let it display naturally in chat
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
@@ -944,6 +957,10 @@ elif not st.session_state.setup_started:
                 # Don't add user message yet
                 
                 response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+                
+                # Show typing effect
+                msg_placeholder = st.empty()
+                show_message_with_typing(response, msg_placeholder)
                 
                 # Add message and rerun
                 st.session_state.messages.append({"role": "assistant", "content": response})
