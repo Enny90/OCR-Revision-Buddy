@@ -728,27 +728,7 @@ def call_ai(user_message, stream_placeholder=None):
             if st.session_state.get('student_topic'):
                 student_context += f"\nFocusing on: {st.session_state.student_topic}"
         
-        # Add quiz mode instruction
-        quiz_mode_instruction = ""
-        if st.session_state.get('quiz_mode', False):
-            quiz_mode_instruction = "\n\nFor this conversation, behave as if you are in TEST MODE: focus on generating questions, marking answers, and giving scores. Only explain content in more depth after you have marked the student's attempt."
-        
-        messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-        messages.append({"role": "user", "content": user_message})
-        
-        # Try OpenAI with streaming
-        if openai_key:
-            import openai
-            import time
-            client = openai.OpenAI(api_key=openai_key)
-            
-            system_msg = SYSTEM_PROMPT
-            if doc_context:
-                system_msg += f"\n\n{doc_context}"
-            if student_context:
-                system_msg += f"\n\n{student_context}"
-            if quiz_mode_instruction:
-                system_msg += quiz_mode_instruction
+
             
             stream = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -775,17 +755,7 @@ def call_ai(user_message, stream_placeholder=None):
             
             return full_response
         
-        # Try Anthropic with streaming
-        elif anthropic_key:
-            import anthropic
-            import time
-            client = anthropic.Anthropic(api_key=anthropic_key)
-            
-            system_msg = SYSTEM_PROMPT
-            if student_context:
-                system_msg += f"\n\n{student_context}"
-            if quiz_mode_instruction:
-                system_msg += quiz_mode_instruction
+
             
             full_msg = user_message
             if doc_context:
@@ -995,18 +965,10 @@ else:
             st.session_state.messages = []
             st.rerun()
     
-    # Quiz mode toggle and session info
-    col_toggle, col_history = st.columns([2, 1])
+    # Session info and quiz history
+    col_info, col_history = st.columns([2, 1])
     
-    with col_toggle:
-        quiz_mode = st.checkbox(
-            "🧪 Test mode (questions + marking)",
-            value=st.session_state.quiz_mode,
-            key="quiz_toggle",
-            help="Enable test mode for structured quizzes and marking"
-        )
-        st.session_state.quiz_mode = quiz_mode
-        
+    with col_info:
         # Show session info if available
         if st.session_state.student_name:
             st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
