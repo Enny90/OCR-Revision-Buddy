@@ -829,7 +829,9 @@ if st.session_state.admin_mode:
     
     show_admin_panel()
 
-
+elif not st.session_state.setup_started:
+    # Hero section with chips (normal landing page - hide after any interaction)
+    col1, col2, col3 = st.columns([1, 6, 1])
     
     with col3:
         pass  # Remove admin button from hero
