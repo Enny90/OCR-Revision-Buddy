@@ -1011,7 +1011,18 @@ else:
                     st.caption(snippet)
                     st.markdown("---")
     
-
+    # Display chat messages
+    for message in st.session_state.messages:
+        role = "You" if message["role"] == "user" else "OCR Business Buddy"
+        role_class = message["role"]
+        icon = "👤" if message["role"] == "user" else "📘"
+        
+        st.markdown(f"""
+        <div class="chat-message {role_class}">
+            <div class="message-role">{icon} {role}</div>
+            <div class="message-content">{message["content"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Show password prompt if awaiting
     if st.session_state.get('awaiting_password', False):
