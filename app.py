@@ -67,6 +67,11 @@ if 'pending_prompt' not in st.session_state:
 if 'pending_source' not in st.session_state:
     st.session_state.pending_source = None  # e.g. "chip", "chat"
 
+# NEW: flag to hide hero/chips after any interaction
+if 'setup_started' not in st.session_state:
+    st.session_state.setup_started = False
+
+
 # NEW: GitHub document loading function
 def load_documents_from_github():
     """Load documents from GitHub using credentials in secrets"""
@@ -824,8 +829,8 @@ if st.session_state.admin_mode:
     
     show_admin_panel()
 
-elif len(st.session_state.messages) == 0:
-    # Hero section with chips (normal landing page)
+elif not st.session_state.setup_started:
+    # Hero section with chips (normal landing page - hide after any interaction)
     col1, col2, col3 = st.columns([1, 6, 1])
     
     with col3:
@@ -850,6 +855,9 @@ elif len(st.session_state.messages) == 0:
     with col1:
         if st.button("📚 Aims & objectives (1.4)", key="chip1", use_container_width=True):
             if not st.session_state.student_info_submitted:
+                # NEW: Mark that setup has started (hides hero/chips)
+                st.session_state.setup_started = True
+                
                 # NEW: Store pending prompt before asking for student info
                 st.session_state.pending_prompt = "Explain business aims and objectives (Unit 1.4)"
                 st.session_state.pending_source = "chip"
@@ -877,6 +885,9 @@ elif len(st.session_state.messages) == 0:
     with col2:
         if st.button("👥 Test me on Unit 1.5", key="chip2", use_container_width=True):
             if not st.session_state.student_info_submitted:
+                # NEW: Mark that setup has started (hides hero/chips)
+                st.session_state.setup_started = True
+                
                 # NEW: Store pending prompt before asking for student info
                 st.session_state.pending_prompt = "Test me on Unit 1.5 - Stakeholders in business"
                 st.session_state.pending_source = "chip"
@@ -902,6 +913,9 @@ elif len(st.session_state.messages) == 0:
     with col3:
         if st.button("📊 5 MCQs on Unit 2.2", key="chip3", use_container_width=True):
             if not st.session_state.student_info_submitted:
+                # NEW: Mark that setup has started (hides hero/chips)
+                st.session_state.setup_started = True
+                
                 # NEW: Store pending prompt before asking for student info
                 # NOTE: We DON'T add the user message here - we'll add it later when we execute it
                 st.session_state.pending_prompt = "Give me 5 MCQs on Unit 2.2 - Market research"
@@ -929,6 +943,9 @@ elif len(st.session_state.messages) == 0:
     with col4:
         if st.button("📝 Mark my 9-mark answer", key="chip4", use_container_width=True):
             if not st.session_state.student_info_submitted:
+                # NEW: Mark that setup has started (hides hero/chips)
+                st.session_state.setup_started = True
+                
                 # NEW: Store pending prompt before asking for student info
                 st.session_state.pending_prompt = "I have a 9-mark answer to be marked"
                 st.session_state.pending_source = "chip"
