@@ -873,7 +873,6 @@ elif not st.session_state.setup_started:
                 
                 # Add message and set flag to show typing after rerun
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                st.session_state.show_typing_for_last_message = True
                 st.session_state.awaiting_student_info = True
                 st.rerun()
 
@@ -902,7 +901,6 @@ elif not st.session_state.setup_started:
                 # Add message and set flag
                 
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                st.session_state.show_typing_for_last_message = True
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -960,7 +958,6 @@ elif not st.session_state.setup_started:
                 # Add message and set flag
                 
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                st.session_state.show_typing_for_last_message = True
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.session_state.awaiting_student_info = True
                 st.rerun()
@@ -1014,30 +1011,7 @@ else:
                     st.caption(snippet)
                     st.markdown("---")
     
-    # Display chat messages
-    for idx, message in enumerate(st.session_state.messages):
-        role = "You" if message["role"] == "user" else "OCR Business Buddy"
-        role_class = message["role"]
-        icon = "👤" if message["role"] == "user" else "📘"
-        
-        # Check if this is the last message and we should show typing
-        is_last = (idx == len(st.session_state.messages) - 1)
-        should_type = (is_last and st.session_state.show_typing_for_last_message)
-        
-        if should_type:
-            # Show with typing effect
-            placeholder = st.empty()
-            show_message_with_typing(message["content"], placeholder)
-            # Clear the flag so it doesn't type again
-            st.session_state.show_typing_for_last_message = False
-        else:
-            # Show normally
-            st.markdown(f"""
-            <div class="chat-message {role_class}">
-                <div class="message-role">{icon} {role}</div>
-                <div class="message-content">{message["content"]}</div>
-            </div>
-            """, unsafe_allow_html=True)
+
     
     # Show password prompt if awaiting
     if st.session_state.get('awaiting_password', False):
