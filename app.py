@@ -829,12 +829,7 @@ if st.session_state.admin_mode:
     
     show_admin_panel()
 
-elif not st.session_state.setup_started:
-    # Hero section with chips (normal landing page - hide after any interaction)
-    # DEBUG
-    st.write(f"DEBUG: setup_started = {st.session_state.setup_started}")
-    
-    col1, col2, col3 = st.columns([1, 6, 1])
+
     
     with col3:
         pass  # Remove admin button from hero
@@ -1003,17 +998,30 @@ else:
                     st.markdown("---")
     
     # Display chat messages
-    for message in st.session_state.messages:
+    for idx, message in enumerate(st.session_state.messages):
         role = "You" if message["role"] == "user" else "OCR Business Buddy"
         role_class = message["role"]
         icon = "👤" if message["role"] == "user" else "📘"
         
-        st.markdown(f"""
-        <div class="chat-message {role_class}">
-            <div class="message-role">{icon} {role}</div>
-            <div class="message-content">{message["content"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Check if this is the last message and if we should show typing effect
+        is_last_message = (idx == len(st.session_state.messages) - 1)
+        should_type = (is_last_message and 
+                      message["role"] == "assistant" and 
+                      st.session_state.get('awaiting_student_info', False) and
+                      len(st.session_state.messages) == 1)  # Only first message
+        
+        if should_type:
+            # Show with typing effect for the first "Before we start..." message
+            placeholder = st.empty()
+            show_message_with_typing(message["content"], placeholder)
+        else:
+            # Show normally
+            st.markdown(f"""
+            <div class="chat-message {role_class}">
+                <div class="message-role">{icon} {role}</div>
+                <div class="message-content">{message["content"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Show password prompt if awaiting
     if st.session_state.get('awaiting_password', False):
