@@ -9,11 +9,11 @@ TYPING_DELAY = 0.06
 def get_dynamic_delay(message):
     length = len(message)
     if length < 80:
-        return 0.02
+        return 0.005  # Much faster for short messages
     elif length < 300:
-        return 0.04
+        return 0.01   # Faster for medium messages
     else:
-        return 0.07
+        return 0.015  # Still reasonably fast for long messages
 
 # Page config - MUST BE FIRST
 st.set_page_config(
@@ -386,24 +386,27 @@ def record_quiz_history(assistant_message):
 
 def show_message_with_typing(message_content, placeholder):
     """Display a message with typing effect"""
+    import html
     delay = get_dynamic_delay(message_content)
     
     displayed_text = ""
     for char in message_content:
         displayed_text += char
+        safe_text = html.escape(displayed_text)
         placeholder.markdown(f"""
         <div class="chat-message assistant">
             <div class="message-role">📘 OCR Business Buddy</div>
-            <div class="message-content">{displayed_text}▊</div>
+            <div class="message-content">{safe_text}▊</div>
         </div>
         """, unsafe_allow_html=True)
         time.sleep(delay)
     
     # Final display without cursor
+    safe_text = html.escape(displayed_text)
     placeholder.markdown(f"""
     <div class="chat-message assistant">
         <div class="message-role">📘 OCR Business Buddy</div>
-        <div class="message-content">{displayed_text}</div>
+        <div class="message-content">{safe_text}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -597,19 +600,26 @@ else:
             # Clear the flag after showing typing
             st.session_state.typing_message_index = None
         else:
-            # Show normally
+            # Show normally - escape content to prevent HTML injection
+            import html
+            safe_content = html.escape(message["content"])
             st.markdown(f"""
             <div class="chat-message {role_class}">
                 <div class="message-role">{icon} {role}</div>
-                <div class="message-content">{message["content"]}</div>
+                <div class="message-content">{safe_content}</div>
             </div>
             """, unsafe_allow_html=True)
 
 # Chat input
 if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     
+    # Check for teacher mode password first
+    if prompt.strip().lower() == "rhs@2023" or prompt.strip() == "RHS@2023":
+        st.session_state.admin_mode = True
+        st.rerun()
+    
     # If setup hasn't started and student types something, start setup and store their prompt
-    if not st.session_state.setup_started:
+    elif not st.session_state.setup_started:
         st.session_state.setup_started = True
         st.session_state.pending_prompt = prompt
         st.session_state.pending_source = "chat"
