@@ -601,8 +601,21 @@ else:
 # Chat input
 if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     
+    # If setup hasn't started and student types something, start setup and store their prompt
+    if not st.session_state.setup_started:
+        st.session_state.setup_started = True
+        st.session_state.pending_prompt = prompt
+        st.session_state.pending_source = "chat"
+        
+        response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+        
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.typing_message_index = len(st.session_state.messages) - 1
+        st.session_state.awaiting_student_info = True
+        st.rerun()
+    
     # Check if awaiting student info
-    if st.session_state.get('awaiting_student_info', False):
+    elif st.session_state.get('awaiting_student_info', False):
         if ',' in prompt:
             parts = [p.strip() for p in prompt.split(',', 1)]
             if len(parts) >= 2:
@@ -674,25 +687,8 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         st.rerun()
     
     else:
-        # Normal chat flow
-        if not st.session_state.student_info_submitted:
-            st.session_state.setup_started = True
-            st.session_state.pending_prompt = prompt
-            st.session_state.pending_source = "chat"
-            
-            response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
-            
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.session_state.typing_message_index = len(st.session_state.messages) - 1
-            st.session_state.awaiting_student_info = True
-            st.rerun()
-        
-        # Add user message and get AI response
+        # Normal chat flow - student has completed setup
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # Clear any pending state
-        st.session_state.pending_prompt = None
-        st.session_state.pending_source = None
         
         response = call_ai(prompt)
         st.session_state.messages.append({"role": "assistant", "content": response})
