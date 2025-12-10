@@ -655,6 +655,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                         
                         ai_response = call_ai(followup_prompt)
                         st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                        st.session_state.typing_message_index = len(st.session_state.messages) - 1
                         record_quiz_history(ai_response)
                         
                         st.session_state.pending_prompt = None
@@ -686,6 +687,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             
             ai_response = call_ai(followup_prompt)
             st.session_state.messages.append({"role": "assistant", "content": ai_response})
+            st.session_state.typing_message_index = len(st.session_state.messages) - 1
             record_quiz_history(ai_response)
             
             st.session_state.pending_prompt = None
