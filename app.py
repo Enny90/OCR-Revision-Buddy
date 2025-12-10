@@ -282,8 +282,15 @@ SYSTEM_PROMPT = """You are the OCR Business Revision Buddy, a friendly AI tutor 
 - Use OCR command words: Identify, State, Explain, Analyse, Evaluate, Justify
 
 📚 CONTENT:
-- Component 1 (Units 1.1-1.6): Business Activity, Marketing, People
-- Component 2 (Units 2.1-2.4): Operations, Finance, Influences on Business
+- Component 1 - Business 1: business activity, marketing and people (01):
+  * Units 1.1-1.6: Business activity
+  * Units 2.1-2.4: Marketing
+  * Units 3.1-3.7: People
+- Component 2 - Business 2: operations, finance and influences on business (02):
+  * Units 4.1-4.6: Operations
+  * Units 5.1-5.5: Finance
+  * Units 6.1-6.3: Influences on business
+  * Unit 7: The interdependent nature of business
 - Use real business examples (cafés, gyms, shops, services)
 - Keep explanations concise and exam-focused
 
@@ -692,6 +699,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         
         response = call_ai(prompt)
         st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.typing_message_index = len(st.session_state.messages) - 1
         record_quiz_history(response)
         
         st.rerun()
