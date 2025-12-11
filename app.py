@@ -1,4 +1,3 @@
-
 import streamlit as st
 from datetime import datetime
 import json
@@ -352,26 +351,155 @@ def process_uploaded_file(uploaded_file, doc_type):
         }
 
 def show_admin_panel():
-    """Show admin panel for document management"""
-    st.markdown("## 🔧 Admin Panel - Document Management")
+    """Show admin panel for document management and student tracking"""
+    st.markdown("## 🔧 Teacher Dashboard")
     
-    if 'github' in st.secrets:
-        st.success(f"✅ Connected to GitHub: `{st.secrets['github']['repo_name']}`")
-        st.info(f"📚 {len(st.session_state.uploaded_documents)} documents loaded")
+    # Create tabs for different sections
+    tab1, tab2, tab3, tab4 = st.tabs(["📚 Documents", "📊 Quiz History", "👥 Students", "📈 Analytics"])
+    
+    with tab1:
+        st.markdown("### Document Management")
         
-        if st.button("🔄 Reload from GitHub"):
-            github_docs = load_documents_from_github()
-            if github_docs:
-                st.session_state.uploaded_documents = github_docs
-                st.success(f"✅ Reloaded {len(github_docs)} documents!")
-            st.rerun()
+        if 'github' in st.secrets:
+            st.success(f"✅ Connected to GitHub: `{st.secrets['github']['repo_name']}`")
+            st.info(f"📚 {len(st.session_state.uploaded_documents)} documents loaded")
+            
+            if st.button("🔄 Reload from GitHub"):
+                github_docs = load_documents_from_github()
+                if github_docs:
+                    st.session_state.uploaded_documents = github_docs
+                    st.success(f"✅ Reloaded {len(github_docs)} documents!")
+                st.rerun()
+        
+        if st.session_state.uploaded_documents:
+            st.markdown("**Loaded Documents:**")
+            for doc_id, doc in st.session_state.uploaded_documents.items():
+                st.write(f"- {doc['name']} ({doc['type']})")
     
-    if st.button("🔄 Exit Admin Mode"):
+    with tab2:
+        st.markdown("### Quiz History & Marking Records")
+        
+        if st.session_state.quiz_history:
+            st.info(f"📝 {len(st.session_state.quiz_history)} quiz attempts recorded")
+            
+            # Export button
+            if st.button("📥 Export Quiz History as CSV"):
+                import csv
+                from io import StringIO
+                
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(["Timestamp", "Student Name", "Class", "Topic", "Marking Details"])
+                
+                for record in st.session_state.quiz_history:
+                    writer.writerow([
+                        record.get("timestamp", ""),
+                        record.get("student_name", ""),
+                        record.get("student_class", ""),
+                        record.get("topic", ""),
+                        record.get("raw_marking_text", "")[:200] + "..."  # Truncate long text
+                    ])
+                
+                csv_data = output.getvalue()
+                st.download_button(
+                    label="⬇️ Download CSV",
+                    data=csv_data,
+                    file_name=f"quiz_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+            
+            st.markdown("---")
+            
+            # Display quiz records
+            for idx, record in enumerate(reversed(st.session_state.quiz_history)):
+                with st.expander(f"🎯 {record.get('student_name', 'Unknown')} - {record.get('timestamp', '')}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Student:** {record.get('student_name', 'N/A')}")
+                        st.write(f"**Class:** {record.get('student_class', 'N/A')}")
+                    with col2:
+                        st.write(f"**Topic:** {record.get('topic', 'N/A')}")
+                        st.write(f"**Time:** {record.get('timestamp', 'N/A')}")
+                    
+                    st.markdown("**Marking/Feedback:**")
+                    st.text_area("", record.get('raw_marking_text', ''), height=150, key=f"quiz_{idx}", disabled=True)
+        else:
+            st.info("No quiz history yet. Students' quiz attempts will appear here.")
+    
+    with tab3:
+        st.markdown("### Student Sessions")
+        
+        # Get unique students from quiz history
+        students = {}
+        for record in st.session_state.quiz_history:
+            name = record.get('student_name', 'Unknown')
+            class_name = record.get('student_class', 'Unknown')
+            key = f"{name} ({class_name})"
+            
+            if key not in students:
+                students[key] = {
+                    'name': name,
+                    'class': class_name,
+                    'attempts': 0,
+                    'topics': set()
+                }
+            
+            students[key]['attempts'] += 1
+            students[key]['topics'].add(record.get('topic', 'Unknown'))
+        
+        if students:
+            st.info(f"👥 {len(students)} unique students have used the app")
+            
+            # Display student list
+            for student_key, data in sorted(students.items()):
+                with st.expander(f"👤 {student_key}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Quiz Attempts:** {data['attempts']}")
+                    with col2:
+                        st.write(f"**Topics Covered:** {', '.join(data['topics'])}")
+        else:
+            st.info("No student sessions yet. Student data will appear here once they start using the app.")
+    
+    with tab4:
+        st.markdown("### Class Analytics")
+        
+        if st.session_state.quiz_history:
+            # Topic frequency
+            topic_count = {}
+            class_count = {}
+            
+            for record in st.session_state.quiz_history:
+                topic = record.get('topic', 'Unknown')
+                class_name = record.get('student_class', 'Unknown')
+                
+                topic_count[topic] = topic_count.get(topic, 0) + 1
+                class_count[class_name] = class_count.get(class_name, 0) + 1
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**📚 Most Popular Topics:**")
+                for topic, count in sorted(topic_count.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.write(f"- {topic}: {count} attempts")
+            
+            with col2:
+                st.markdown("**🏫 Classes Using the App:**")
+                for class_name, count in sorted(class_count.items(), key=lambda x: x[1], reverse=True):
+                    st.write(f"- {class_name}: {count} attempts")
+            
+            st.markdown("---")
+            st.markdown("**📊 Usage Summary:**")
+            st.write(f"- Total quiz attempts: {len(st.session_state.quiz_history)}")
+            st.write(f"- Unique students: {len(set(r.get('student_name', '') for r in st.session_state.quiz_history))}")
+            st.write(f"- Topics covered: {len(topic_count)}")
+        else:
+            st.info("Analytics will appear here once students start using the app.")
+    
+    st.markdown("---")
+    if st.button("🔄 Exit Teacher Mode"):
         st.session_state.admin_mode = False
         st.rerun()
-    
-    if st.session_state.uploaded_documents:
-        st.success(f"✅ {len(st.session_state.uploaded_documents)} documents loaded")
 
 def record_quiz_history(assistant_message):
     """Record quiz result if it contains marking/scoring"""
@@ -519,8 +647,8 @@ def call_ai(user_message, stream_placeholder=None):
 if st.session_state.admin_mode:
     st.markdown("""
     <div style="text-align: center; padding: 2rem;">
-        <h1 style="color: #202123;">📚 OCR Business Revision Buddy</h1>
-        <p style="color: #6e6e80;">Admin Panel - Document Management</p>
+        <h1 style="color: #202123;">👨‍🏫 Teacher Dashboard</h1>
+        <p style="color: #6e6e80;">OCR Business Revision Buddy - Teacher View</p>
     </div>
     """, unsafe_allow_html=True)
     show_admin_panel()
