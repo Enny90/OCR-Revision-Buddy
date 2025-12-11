@@ -1,3 +1,4 @@
+
 import streamlit as st
 from datetime import datetime
 import json
@@ -435,6 +436,15 @@ def show_message_with_typing(message_content, placeholder):
 def call_ai(user_message, stream_placeholder=None):
     """Call AI with document context"""
     try:
+        # Show thinking indicator if placeholder provided
+        if stream_placeholder:
+            stream_placeholder.markdown("""
+            <div class="chat-message assistant">
+                <div class="message-role">📘 OCR Business Buddy</div>
+                <div class="message-content">🤔 Thinking...</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         openai_key = st.secrets.get("OPENAI_API_KEY", "")
         anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
         
@@ -692,7 +702,9 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                         followup_prompt = st.session_state.pending_prompt
                         st.session_state.messages.append({"role": "user", "content": followup_prompt})
                         
-                        ai_response = call_ai(followup_prompt)
+                        # Show thinking indicator
+                        thinking_placeholder = st.empty()
+                        ai_response = call_ai(followup_prompt, thinking_placeholder)
                         st.session_state.messages.append({"role": "assistant", "content": ai_response})
                         st.session_state.typing_message_index = len(st.session_state.messages) - 1
                         record_quiz_history(ai_response)
@@ -724,7 +736,9 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             followup_prompt = st.session_state.pending_prompt
             st.session_state.messages.append({"role": "user", "content": followup_prompt})
             
-            ai_response = call_ai(followup_prompt)
+            # Show thinking indicator
+            thinking_placeholder = st.empty()
+            ai_response = call_ai(followup_prompt, thinking_placeholder)
             st.session_state.messages.append({"role": "assistant", "content": ai_response})
             st.session_state.typing_message_index = len(st.session_state.messages) - 1
             record_quiz_history(ai_response)
@@ -738,7 +752,9 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
         # Normal chat flow - student has completed setup
         st.session_state.messages.append({"role": "user", "content": prompt})
         
-        response = call_ai(prompt)
+        # Show thinking indicator
+        thinking_placeholder = st.empty()
+        response = call_ai(prompt, thinking_placeholder)
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.session_state.typing_message_index = len(st.session_state.messages) - 1
         record_quiz_history(response)
