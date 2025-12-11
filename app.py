@@ -384,18 +384,35 @@ def record_quiz_history(assistant_message):
         }
         st.session_state.quiz_history.append(quiz_record)
 
+def simple_markdown_to_html(text):
+    """Convert basic markdown to HTML without external libraries"""
+    import re
+    
+    # Replace **bold** with <strong>
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    
+    # Replace *italic* with <em>
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    
+    # Replace newlines with <br>
+    text = text.replace('\n', '<br>')
+    
+    # Handle numbered lists (1. item)
+    text = re.sub(r'^(\d+)\.\s+(.+)$', r'<div style="margin-left: 20px;">\1. \2</div>', text, flags=re.MULTILINE)
+    
+    # Handle bullet points (- item or * item)
+    text = re.sub(r'^[-*]\s+(.+)$', r'<div style="margin-left: 20px;">• \1</div>', text, flags=re.MULTILINE)
+    
+    return text
+
 def show_message_with_typing(message_content, placeholder):
     """Display a message with typing effect"""
-    import markdown
     delay = get_dynamic_delay(message_content)
     
     displayed_text = ""
     for char in message_content:
         displayed_text += char
-        html_content = markdown.markdown(displayed_text)
-        # Remove wrapping <p> tags if present
-        if html_content.startswith('<p>') and html_content.endswith('</p>'):
-            html_content = html_content[3:-4]
+        html_content = simple_markdown_to_html(displayed_text)
         
         placeholder.markdown(f"""
         <div class="chat-message assistant">
@@ -406,9 +423,7 @@ def show_message_with_typing(message_content, placeholder):
         time.sleep(delay)
     
     # Final display without cursor
-    html_content = markdown.markdown(displayed_text)
-    if html_content.startswith('<p>') and html_content.endswith('</p>'):
-        html_content = html_content[3:-4]
+    html_content = simple_markdown_to_html(displayed_text)
     
     placeholder.markdown(f"""
     <div class="chat-message assistant">
@@ -607,12 +622,8 @@ else:
             # Clear the flag after showing typing
             st.session_state.typing_message_index = None
         else:
-            # Show normally - convert markdown to HTML and strip outer p tags
-            import markdown
-            html_content = markdown.markdown(message["content"])
-            # Remove wrapping <p> tags if present to avoid issues
-            if html_content.startswith('<p>') and html_content.endswith('</p>'):
-                html_content = html_content[3:-4]
+            # Show normally - convert markdown to HTML using simple converter
+            html_content = simple_markdown_to_html(message["content"])
             
             st.markdown(f"""
             <div class="chat-message {role_class}">
