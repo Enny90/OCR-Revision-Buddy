@@ -386,27 +386,34 @@ def record_quiz_history(assistant_message):
 
 def show_message_with_typing(message_content, placeholder):
     """Display a message with typing effect"""
-    import html
+    import markdown
     delay = get_dynamic_delay(message_content)
     
     displayed_text = ""
     for char in message_content:
         displayed_text += char
-        safe_text = html.escape(displayed_text)
+        html_content = markdown.markdown(displayed_text)
+        # Remove wrapping <p> tags if present
+        if html_content.startswith('<p>') and html_content.endswith('</p>'):
+            html_content = html_content[3:-4]
+        
         placeholder.markdown(f"""
         <div class="chat-message assistant">
             <div class="message-role">📘 OCR Business Buddy</div>
-            <div class="message-content">{safe_text}▊</div>
+            <div class="message-content">{html_content}▊</div>
         </div>
         """, unsafe_allow_html=True)
         time.sleep(delay)
     
     # Final display without cursor
-    safe_text = html.escape(displayed_text)
+    html_content = markdown.markdown(displayed_text)
+    if html_content.startswith('<p>') and html_content.endswith('</p>'):
+        html_content = html_content[3:-4]
+    
     placeholder.markdown(f"""
     <div class="chat-message assistant">
         <div class="message-role">📘 OCR Business Buddy</div>
-        <div class="message-content">{safe_text}</div>
+        <div class="message-content">{html_content}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -600,13 +607,17 @@ else:
             # Clear the flag after showing typing
             st.session_state.typing_message_index = None
         else:
-            # Show normally - escape content to prevent HTML injection
-            import html
-            safe_content = html.escape(message["content"])
+            # Show normally - convert markdown to HTML and strip outer p tags
+            import markdown
+            html_content = markdown.markdown(message["content"])
+            # Remove wrapping <p> tags if present to avoid issues
+            if html_content.startswith('<p>') and html_content.endswith('</p>'):
+                html_content = html_content[3:-4]
+            
             st.markdown(f"""
             <div class="chat-message {role_class}">
                 <div class="message-role">{icon} {role}</div>
-                <div class="message-content">{safe_content}</div>
+                <div class="message-content">{html_content}</div>
             </div>
             """, unsafe_allow_html=True)
 
