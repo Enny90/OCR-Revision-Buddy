@@ -643,8 +643,15 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     # If setup hasn't started and student types something, start setup and store their prompt
     elif not st.session_state.setup_started:
         st.session_state.setup_started = True
-        st.session_state.pending_prompt = prompt
-        st.session_state.pending_source = "chat"
+        
+        # Check if it's just a greeting (don't save as pending prompt)
+        greeting_words = ['hi', 'hello', 'hey', 'yo', 'hiya', 'greetings']
+        is_greeting = prompt.strip().lower() in greeting_words
+        
+        if not is_greeting:
+            # Save meaningful questions/requests for later
+            st.session_state.pending_prompt = prompt
+            st.session_state.pending_source = "chat"
         
         response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
         
@@ -694,9 +701,9 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                         st.session_state.pending_source = None
                         st.rerun()
                     else:
-                        # Ask for topic
+                        # No pending prompt - just greet and ask for topic directly
                         st.session_state.awaiting_topic = True
-                        response = f"Great! Thanks **{st.session_state.student_name}** from **{st.session_state.student_class}**! 📚\n\nNow, which topic would you like to revise today? You can say:\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
+                        response = f"Hello **{st.session_state.student_name}** from **{st.session_state.student_class}**! 👋\n\nWhat topic would you like to revise today?\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
                         st.session_state.messages.append({"role": "assistant", "content": response})
                         st.rerun()
     
