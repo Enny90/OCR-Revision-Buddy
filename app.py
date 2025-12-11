@@ -382,8 +382,12 @@ def show_admin_panel():
         if st.session_state.quiz_history:
             st.info(f"📝 {len(st.session_state.quiz_history)} quiz attempts recorded")
             
-            # Export button
-            if st.button("📥 Export Quiz History as CSV"):
+            # Export button and download
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                export_csv = st.button("📥 Export as CSV")
+            
+            if export_csv:
                 import csv
                 from io import StringIO
                 
@@ -401,12 +405,14 @@ def show_admin_panel():
                     ])
                 
                 csv_data = output.getvalue()
-                st.download_button(
-                    label="⬇️ Download CSV",
-                    data=csv_data,
-                    file_name=f"quiz_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
+                
+                with col2:
+                    st.download_button(
+                        label="⬇️ Download CSV File",
+                        data=csv_data,
+                        file_name=f"quiz_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
             
             st.markdown("---")
             
