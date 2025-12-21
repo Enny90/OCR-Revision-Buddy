@@ -2,3 +2,4 @@ streamlit
 openai
 anthropic
 PyPDF2
+PyGithub
