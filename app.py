@@ -822,7 +822,8 @@ else:
 if prompt := st.chat_input("Ask a Business question or request a quiz…"):
     
     # Check for teacher mode password first
-    if prompt.strip().lower() == "rhs@2023" or prompt.strip() == "RHS@2023":
+    teacher_password = st.secrets.get("TEACHER_PASSWORD", "RHS@2023")  # Fallback to default if not set
+    if prompt.strip().lower() == teacher_password.lower() or prompt.strip() == teacher_password:
         st.session_state.admin_mode = True
         st.rerun()
     
