@@ -95,45 +95,76 @@ def load_documents_from_github():
             st.session_state['github_error'] = error_log
             return {}
         
+        error_log.append(f"📡 Connecting to GitHub repo: {repo_name}")
+        
         from github import Github
         import base64
         
         g = Github(github_token)
         repo = g.get_repo(repo_name)
         
+        error_log.append(f"✅ Connected to repository: {repo.full_name}")
+        
         def get_all_files(path=""):
             all_files = []
             try:
                 contents = repo.get_contents(path)
+                error_log.append(f"📂 Scanning folder: '{path if path else 'root'}' - found {len(contents)} items")
                 for content in contents:
                     if content.type == "dir":
+                        error_log.append(f"📁 Entering subfolder: {content.path}")
                         all_files.extend(get_all_files(content.path))
-                    elif content.name.endswith('.txt'):
+                    elif content.name.endswith(('.txt', '.pdf', '.docx', '.doc', '.md')):
+                        error_log.append(f"📄 Found file: {content.name}")
                         all_files.append(content)
+                    else:
+                        error_log.append(f"⏭️ Skipped (wrong type): {content.name}")
             except Exception as e:
                 error_log.append(f"⚠️ Error reading path '{path}': {str(e)}")
             return all_files
         
         files = get_all_files()
+        error_log.append(f"📊 Total files to process: {len(files)}")
         documents = {}
         
         for idx, content in enumerate(files):
             try:
-                text = content.decoded_content.decode('utf-8', errors='ignore')
+                # Handle different file types
+                if content.name.endswith('.txt') or content.name.endswith('.md'):
+                    text = content.decoded_content.decode('utf-8', errors='ignore')
+                    error_log.append(f"✅ Loaded text file: {content.name} ({len(text)} chars)")
+                elif content.name.endswith('.pdf'):
+                    # For PDFs, we need to decode and extract text
+                    import PyPDF2
+                    from io import BytesIO
+                    pdf_content = BytesIO(content.decoded_content)
+                    pdf_reader = PyPDF2.PdfReader(pdf_content)
+                    text = ""
+                    for page in pdf_reader.pages:
+                        text += page.extract_text() + "\n\n"
+                    error_log.append(f"✅ Loaded PDF: {content.name} ({len(text)} chars)")
+                elif content.name.endswith(('.docx', '.doc')):
+                    # For Word docs, note that they're present but need conversion
+                    text = f"[Word document: {content.name}]\nNote: Word documents need to be converted to .txt or .pdf for processing."
+                    error_log.append(f"⚠️ Word doc found (needs conversion): {content.name}")
+                else:
+                    continue
+                
                 documents[f"doc_{idx}"] = {
                     'name': content.name,
                     'type': 'GitHub Document',
                     'content': text,
                     'uploaded_at': datetime.now().strftime("%Y-%m-%d %H:%M")
                 }
-            except:
+            except Exception as e:
+                error_log.append(f"❌ Error loading {content.name}: {str(e)}")
                 continue
         
-        error_log.append(f"✅ Loaded {len(documents)} documents")
+        error_log.append(f"✅ Successfully loaded {len(documents)} documents")
         st.session_state['github_error'] = error_log
         return documents
     except Exception as e:
-        error_log.append(f"❌ Error: {str(e)}")
+        error_log.append(f"❌ Fatal error: {str(e)}")
         st.session_state['github_error'] = error_log
         return {}
 
@@ -364,17 +395,28 @@ def show_admin_panel():
             st.success(f"✅ Connected to GitHub: `{st.secrets['github']['repo_name']}`")
             st.info(f"📚 {len(st.session_state.uploaded_documents)} documents loaded")
             
+            # Show any errors from GitHub loading
+            if 'github_error' in st.session_state and st.session_state['github_error']:
+                st.warning("**Loading Log:**")
+                for error in st.session_state['github_error']:
+                    st.write(error)
+            
             if st.button("🔄 Reload from GitHub"):
-                github_docs = load_documents_from_github()
-                if github_docs:
-                    st.session_state.uploaded_documents = github_docs
-                    st.success(f"✅ Reloaded {len(github_docs)} documents!")
+                with st.spinner("Loading documents from GitHub..."):
+                    github_docs = load_documents_from_github()
+                    if github_docs:
+                        st.session_state.uploaded_documents = github_docs
+                        st.success(f"✅ Reloaded {len(github_docs)} documents!")
+                    else:
+                        st.error("⚠️ No documents loaded. Check the log above for details.")
                 st.rerun()
         
         if st.session_state.uploaded_documents:
             st.markdown("**Loaded Documents:**")
             for doc_id, doc in st.session_state.uploaded_documents.items():
                 st.write(f"- {doc['name']} ({doc['type']})")
+        else:
+            st.info("No documents currently loaded. Click 'Reload from GitHub' to load documents.")
     
     with tab2:
         st.markdown("### Quiz History & Marking Records")
