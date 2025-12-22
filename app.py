@@ -840,7 +840,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             st.session_state.pending_prompt = prompt
             st.session_state.pending_source = "chat"
         
-        response = "👋 Welcome to OCR Business Revision Buddy!\n Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+        response = "👋 Welcome to OCR Business Revision Buddy!\nBefore we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
         
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.session_state.typing_message_index = len(st.session_state.messages) - 1
@@ -895,6 +895,18 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
                         response = f"Hello **{st.session_state.student_name}** from **{st.session_state.student_class}**! 👋\n\nWhat topic would you like to revise today?\n\n- A specific unit (e.g. \"Unit 1.4 - Business aims\")\n- A topic area (e.g. \"Marketing\" or \"Finance\")\n- \"General revision\" for mixed questions\n\nWhat would you like to focus on?"
                         st.session_state.messages.append({"role": "assistant", "content": response})
                         st.rerun()
+                else:
+                    # Invalid format - looks like a question, not name/class
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    reminder = "I see you have a question! 😊 But first, I need to know who you are.\n\nPlease provide your **name and class** in this format:\n**\"Name, Class\"**\n\nExample: \"Hassan, 11B\"\n\nThen I'll be happy to help with your question!"
+                    st.session_state.messages.append({"role": "assistant", "content": reminder})
+                    st.rerun()
+        else:
+            # No comma - remind them of the format
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            reminder = "I need your **name and class** separated by a comma.\n\nPlease type:\n**\"Name, Class\"**\n\nExample: \"A.J., 10B1\""
+            st.session_state.messages.append({"role": "assistant", "content": reminder})
+            st.rerun()
     
     # Check if awaiting topic
     elif st.session_state.get('awaiting_topic', False):
