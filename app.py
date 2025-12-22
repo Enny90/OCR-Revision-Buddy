@@ -840,7 +840,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             st.session_state.pending_prompt = prompt
             st.session_state.pending_source = "chat"
         
-        response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+        response = "👋 Welcome to OCR Business Revision Buddy!\n\Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
         
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.session_state.typing_message_index = len(st.session_state.messages) - 1
