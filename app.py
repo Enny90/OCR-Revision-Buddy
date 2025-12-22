@@ -421,10 +421,35 @@ def show_admin_panel():
     with tab2:
         st.markdown("### Quiz History & Marking Records")
         
+        # Google Sheets status
+        if 'gsheet' in st.secrets and 'SHEET_ID' in st.secrets:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.success("✅ Google Sheets: Connected & Auto-saving")
+            with col2:
+                sheet_url = f"https://docs.google.com/spreadsheets/d/{st.secrets['SHEET_ID']}"
+                st.markdown(f"[📊 Open Sheet]({sheet_url})")
+        else:
+            st.info("ℹ️ Google Sheets not configured. Records are temporary (lost on restart).")
+        
         # Debug info
         with st.expander("🔍 Debug Info"):
             st.write(f"**Total records in memory:** {len(st.session_state.quiz_history)}")
-            st.write(f"**Session active:** {st.session_state.get('student_info_submitted', False)}")
+            st.write(f"**Current session has student data:** {bool(st.session_state.get('student_name'))}")
+            
+            if st.session_state.get('student_name'):
+                st.info(f"📝 Active student: {st.session_state.student_name} ({st.session_state.student_class})")
+            
+            st.warning("""
+            **⚠️ Important:** Quiz history is stored in browser memory and will be lost when:
+            - You refresh the page
+            - The app restarts
+            - You close the browser
+            
+            **To test:** Complete a student quiz session, then WITHOUT refreshing, 
+            type the teacher password to check the data.
+            """)
+            
             if st.session_state.quiz_history:
                 st.write("**Last 3 records:**")
                 for record in st.session_state.quiz_history[-3:]:
@@ -581,7 +606,59 @@ def record_quiz_history(assistant_message):
             "topic": st.session_state.get("student_topic", ""),
             "raw_marking_text": assistant_message
         }
+        
+        # Save to session state (temporary)
         st.session_state.quiz_history.append(quiz_record)
+        
+        # Save to Google Sheets (permanent)
+        try:
+            save_to_google_sheets(quiz_record)
+        except Exception as e:
+            # Fail silently - don't break the app if Google Sheets fails
+            print(f"Failed to save to Google Sheets: {e}")
+
+def save_to_google_sheets(quiz_record):
+    """Save quiz record to Google Sheets"""
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        
+        # Check if Google Sheets is configured
+        if 'gsheet' not in st.secrets or 'SHEET_ID' not in st.secrets:
+            return  # Skip if not configured
+        
+        # Set up credentials
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        
+        creds = Credentials.from_service_account_info(
+            st.secrets["gsheet"],
+            scopes=scopes
+        )
+        
+        client = gspread.authorize(creds)
+        
+        # Open the sheet
+        sheet = client.open_by_key(st.secrets["SHEET_ID"]).sheet1
+        
+        # Prepare row data
+        row = [
+            quiz_record["timestamp"],
+            quiz_record["student_name"],
+            quiz_record["student_class"],
+            quiz_record["topic"],
+            quiz_record["raw_marking_text"][:1000]  # Truncate if too long
+        ]
+        
+        # Append row
+        sheet.append_row(row)
+        
+    except Exception as e:
+        # Log error but don't crash the app
+        print(f"Google Sheets error: {e}")
+        raise  # Re-raise so record_quiz_history can catch it
 
 def simple_markdown_to_html(text):
     """Convert basic markdown to HTML without external libraries"""
@@ -812,7 +889,12 @@ else:
     
     # Session info
     if st.session_state.student_name:
-        st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
+        col_info1, col_info2 = st.columns([3, 1])
+        with col_info1:
+            st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
+        with col_info2:
+            if len(st.session_state.quiz_history) > 0:
+                st.caption(f"📊 {len(st.session_state.quiz_history)} quiz(zes) completed")
     
     # Display chat messages with typing effect for flagged message
     for idx, message in enumerate(st.session_state.messages):
