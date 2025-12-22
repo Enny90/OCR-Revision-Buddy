@@ -421,6 +421,43 @@ def show_admin_panel():
     with tab2:
         st.markdown("### Quiz History & Marking Records")
         
+        # Google Sheets status with detailed debug
+        with st.expander("🔍 Google Sheets Configuration Debug"):
+            st.write("**Checking secrets configuration...**")
+            
+            # Check for gsheet section
+            has_gsheet = 'gsheet' in st.secrets
+            st.write(f"- Has `[gsheet]` section: {has_gsheet}")
+            
+            if has_gsheet:
+                gsheet_keys = list(st.secrets['gsheet'].keys())
+                st.write(f"- Keys in `[gsheet]`: {gsheet_keys}")
+                st.write(f"- `type` value: {st.secrets['gsheet'].get('type', 'NOT FOUND')}")
+                st.write(f"- `client_email`: {st.secrets['gsheet'].get('client_email', 'NOT FOUND')}")
+            
+            # Check for SHEET_ID
+            has_sheet_id = 'SHEET_ID' in st.secrets
+            st.write(f"- Has `SHEET_ID` at root level: {has_sheet_id}")
+            
+            if has_sheet_id:
+                sheet_id = st.secrets['SHEET_ID']
+                st.write(f"- `SHEET_ID` value: `{sheet_id[:20]}...`")
+                st.write(f"- Length: {len(sheet_id)} characters")
+            else:
+                # Check if it's mistakenly inside gsheet
+                if has_gsheet and 'SHEET_ID' in st.secrets['gsheet']:
+                    st.error("❌ `SHEET_ID` is inside `[gsheet]` - it should be at root level!")
+                    st.write(f"- Found at: `[gsheet]` → `SHEET_ID`")
+                else:
+                    st.error("❌ `SHEET_ID` not found anywhere in secrets!")
+            
+            # Overall status
+            st.markdown("---")
+            if has_gsheet and has_sheet_id:
+                st.success("✅ Configuration looks correct!")
+            else:
+                st.error("❌ Configuration incomplete - see issues above")
+        
         # Google Sheets status
         if 'gsheet' in st.secrets and 'SHEET_ID' in st.secrets:
             col1, col2 = st.columns([3, 1])
@@ -433,7 +470,7 @@ def show_admin_panel():
             st.info("ℹ️ Google Sheets not configured. Records are temporary (lost on restart).")
         
         # Debug info
-        with st.expander("🔍 Debug Info"):
+        with st.expander("🔍 Session Debug Info"):
             st.write(f"**Total records in memory:** {len(st.session_state.quiz_history)}")
             st.write(f"**Current session has student data:** {bool(st.session_state.get('student_name'))}")
             
