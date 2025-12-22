@@ -3,3 +3,5 @@ openai
 anthropic
 PyPDF2
 PyGithub
+gspread
+google-auth
