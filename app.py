@@ -421,6 +421,15 @@ def show_admin_panel():
     with tab2:
         st.markdown("### Quiz History & Marking Records")
         
+        # Debug info
+        with st.expander("🔍 Debug Info"):
+            st.write(f"**Total records in memory:** {len(st.session_state.quiz_history)}")
+            st.write(f"**Session active:** {st.session_state.get('student_info_submitted', False)}")
+            if st.session_state.quiz_history:
+                st.write("**Last 3 records:**")
+                for record in st.session_state.quiz_history[-3:]:
+                    st.json(record)
+        
         if st.session_state.quiz_history:
             st.info(f"📝 {len(st.session_state.quiz_history)} quiz attempts recorded")
             
@@ -550,8 +559,21 @@ def show_admin_panel():
         st.rerun()
 
 def record_quiz_history(assistant_message):
-    """Record quiz result if it contains marking/scoring"""
-    if any(marker in assistant_message for marker in ["Score:", "score:", "/2", "/3", "/6"]):
+    """Record quiz result if it contains marking/scoring or is a substantial response"""
+    # Check if student info is available (means they've completed setup)
+    if not st.session_state.get("student_name") or not st.session_state.get("student_class"):
+        return  # Don't record if no student info
+    
+    # Record if it contains marking keywords OR is a substantial response (>200 chars)
+    is_marking = any(marker in assistant_message.lower() for marker in [
+        "score", "mark", "marks", "/2", "/3", "/4", "/5", "/6", "/9", "/12",
+        "correct", "incorrect", "well done", "good answer", "excellent",
+        "✅", "❌", "model answer", "next time"
+    ])
+    
+    is_substantial = len(assistant_message) > 200  # Long responses are likely quiz/marking
+    
+    if is_marking or is_substantial:
         quiz_record = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "student_name": st.session_state.get("student_name", ""),
@@ -840,7 +862,7 @@ if prompt := st.chat_input("Ask a Business question or request a quiz…"):
             st.session_state.pending_prompt = prompt
             st.session_state.pending_source = "chat"
         
-        response = "👋 Welcome to OCR Business Revision Buddy!\nBefore we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
+        response = "👋 Before we start your revision, I need your first name or initials and your class (e.g. 10ABS) so your teacher knows who completed it.\n\nPlease type:\n**\"Name/Initials, Class\"**\n\nExample: \"A.J., 10B1\"\n\nOnce I have that, I'll ask which topic you want to revise!"
         
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.session_state.typing_message_index = len(st.session_state.messages) - 1
