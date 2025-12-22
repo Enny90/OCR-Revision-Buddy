@@ -424,21 +424,7 @@ def show_admin_panel():
         # Debug info
         with st.expander("🔍 Debug Info"):
             st.write(f"**Total records in memory:** {len(st.session_state.quiz_history)}")
-            st.write(f"**Current session has student data:** {bool(st.session_state.get('student_name'))}")
-            
-            if st.session_state.get('student_name'):
-                st.info(f"📝 Active student: {st.session_state.student_name} ({st.session_state.student_class})")
-            
-            st.warning("""
-            **⚠️ Important:** Quiz history is stored in browser memory and will be lost when:
-            - You refresh the page
-            - The app restarts
-            - You close the browser
-            
-            **To test:** Complete a student quiz session, then WITHOUT refreshing, 
-            type the teacher password to check the data.
-            """)
-            
+            st.write(f"**Session active:** {st.session_state.get('student_info_submitted', False)}")
             if st.session_state.quiz_history:
                 st.write("**Last 3 records:**")
                 for record in st.session_state.quiz_history[-3:]:
@@ -826,12 +812,7 @@ else:
     
     # Session info
     if st.session_state.student_name:
-        col_info1, col_info2 = st.columns([3, 1])
-        with col_info1:
-            st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
-        with col_info2:
-            if len(st.session_state.quiz_history) > 0:
-                st.caption(f"📊 {len(st.session_state.quiz_history)} quiz(zes) completed")
+        st.caption(f"👤 {st.session_state.student_name} – {st.session_state.student_class} – {st.session_state.student_topic}")
     
     # Display chat messages with typing effect for flagged message
     for idx, message in enumerate(st.session_state.messages):
